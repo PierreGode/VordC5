@@ -122,6 +122,8 @@ th{font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:var(--mute
 tr.skim td{background:rgba(242,95,58,.08)}
 tr.skim td:first-child{box-shadow:inset 3px 0 0 var(--accent)}
 .mono{font-family:ui-monospace,Consolas,monospace;font-size:13px;color:var(--muted)}
+.mac-sub{display:none;font-size:11px;margin-top:2px}
+td:first-child{word-break:break-word}
 .dim{color:var(--muted)}
 .bar{display:inline-block;width:84px;height:7px;border-radius:999px;background:var(--bg-soft);overflow:hidden;vertical-align:middle;margin-right:8px;border:1px solid var(--line)}
 .bar i{display:block;height:100%;background:linear-gradient(90deg,var(--accent-2),var(--accent))}
@@ -129,6 +131,18 @@ tr.skim td:first-child{box-shadow:inset 3px 0 0 var(--accent)}
 .tag.g{background:rgba(13,163,177,.14);color:var(--accent-2)}
 .foot{margin-top:16px;color:var(--muted);font-size:12px;text-align:center}
 @media(max-width:680px){.stats{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:520px){
+.wrap{width:100%;padding:16px 12px 32px}
+.meta{text-align:left;padding-top:0}
+.panel{padding:14px;border-radius:16px}
+.stat{padding:12px}
+.stat .n{font-size:22px}
+th,td{padding:8px 6px}
+.bar{width:48px;margin-right:6px}
+th:nth-child(2),td:nth-child(2){display:none}
+.mac-sub{display:block}
+.toggle input{width:18px;height:18px}
+}
 </style>
 </head>
 <body>
@@ -180,7 +194,7 @@ async function tick(){
   $('heap').textContent=Math.round(st.freeHeap/1024)+'KB';
   let rows=dv.devices.slice().sort((a,b)=>b.rssi-a.rssi);
   if(skimOnly)rows=rows.filter(d=>d.skimmer);
-  $('rows').innerHTML=rows.map(d=>{var p=rssiPct(d.rssi);return '<tr class="'+(d.skimmer?'skim':'')+'"><td>'+(esc(d.name)||'<span class=dim>(unnamed)</span>')+'</td><td class=mono>'+esc(d.mac)+'</td><td><span class=bar><i style="width:'+p+'%"></i></span><span class=dim>'+d.rssi+'</span></td><td>'+(d.skimmer?'<span class=tag>SKIMMER</span>':'<span class="tag g">BLE</span>')+'</td></tr>'}).join('')||'<tr><td colspan=4 class=dim>No devices yet&hellip;</td></tr>';
+  $('rows').innerHTML=rows.map(d=>{var p=rssiPct(d.rssi);return '<tr class="'+(d.skimmer?'skim':'')+'"><td>'+(esc(d.name)||'<span class=dim>(unnamed)</span>')+'<div class="mac-sub mono">'+esc(d.mac)+'</div></td><td class=mono>'+esc(d.mac)+'</td><td><span class=bar><i style="width:'+p+'%"></i></span><span class=dim>'+d.rssi+'</span></td><td>'+(d.skimmer?'<span class=tag>SKIMMER</span>':'<span class="tag g">BLE</span>')+'</td></tr>'}).join('')||'<tr><td colspan=4 class=dim>No devices yet&hellip;</td></tr>';
   $('count').textContent='('+rows.length+')';
  }catch(e){console.error(e)}
 }
