@@ -24,6 +24,7 @@ void scan_cycle_task(void* param) {
     (void)param;
     bool scanning = false;
     uint32_t lastRefresh = 0;
+    uint32_t lastHeapLog = 0;
 
     for (;;) {
         if (!s_running) {
@@ -48,6 +49,15 @@ void scan_cycle_task(void* param) {
         if (millis() - lastRefresh >= BLE_SCAN_REFRESH_MS) {
             ble_scanner_refresh();
             lastRefresh = millis();
+        }
+
+        // Heap health log. The scan must survive hours of unique MACs (a city, or
+        // a Flipper spamming random addresses); free heap should settle and stay
+        // flat. A steady downward trend here means something is still leaking.
+        if (millis() - lastHeapLog >= 10000) {
+            Serial.printf("[heap] free=%u  minFree=%u\n",
+                          (unsigned)ESP.getFreeHeap(), (unsigned)ESP.getMinFreeHeap());
+            lastHeapLog = millis();
         }
 
         vTaskDelay(pdMS_TO_TICKS(100));

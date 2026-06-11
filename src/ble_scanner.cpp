@@ -5,21 +5,67 @@
 #include <BLEDevice.h>
 #include <BLEScan.h>
 #include <BLEAdvertisedDevice.h>
-#include <set>
 #include <map>
+#include <cstring>
+#include <math.h>
 
 static BleMode s_mode = BLE_MODE_OFF;
 static int s_bleCount = 0;
 static int s_skimmerCount = 0;
 static BLEScan* s_pScan = nullptr;
 
-// ---- Session totals — unique MACs observed since boot ----
-// Touched by the BLE callback (BLE task) and by the display task on the
-// other core, so all access goes through s_sessionMutex.
-#define BLE_SESSION_TRACK_CAP 4096
+// ---- Session unique-device counters (constant memory) ----
+// We count *unique* MACs seen since boot, but this device is meant to run for
+// hours in a city and to survive a Flipper cycling through random MACs — both
+// produce tens of thousands of distinct addresses. The previous
+// std::set<String> grew ~70 bytes per new MAC and would exhaust the heap, after
+// which NimBLE can no longer allocate advert buffers and the scan dies for good
+// (it never recovers because the set is never freed). HyperLogLog estimates the
+// unique count in a fixed ~1 KB no matter how many devices are seen, trading
+// exactness (~3% standard error) for a hard memory bound.
+class HyperLogLog {
+public:
+    static constexpr int      P = 10;          // 2^P registers
+    static constexpr uint32_t M = 1u << P;     // 1024 registers, 1 byte each
+
+    void add(const char* s) {
+        const uint64_t h   = hash64(s);
+        const uint32_t idx = (uint32_t)(h >> (64 - P));          // top P bits -> register
+        const uint64_t w   = (h << P) | (1ull << (P - 1));       // remaining bits + sentinel
+        const uint8_t  rho = (uint8_t)(__builtin_clzll(w) + 1);  // position of leftmost 1-bit
+        if (rho > reg[idx]) reg[idx] = rho;
+    }
+
+    uint32_t estimate() const {
+        double sum = 0.0;
+        uint32_t zeros = 0;
+        for (uint32_t i = 0; i < M; i++) {
+            sum += 1.0 / (double)(1ull << reg[i]);
+            if (reg[i] == 0) zeros++;
+        }
+        const double alpha = 0.7213 / (1.0 + 1.079 / (double)M);
+        double e = alpha * (double)M * (double)M / sum;
+        if (e <= 2.5 * M && zeros > 0)
+            e = (double)M * log((double)M / (double)zeros);      // small-range linear counting
+        return (uint32_t)(e + 0.5);
+    }
+
+private:
+    uint8_t reg[M] = {0};
+    static uint64_t hash64(const char* s) {
+        uint64_t h = 1469598103934665603ull;                     // FNV-1a 64-bit
+        while (*s) { h ^= (uint8_t)*s++; h *= 1099511628211ull; }
+        h ^= h >> 33; h *= 0xff51afd7ed558ccdull;                // splitmix64 avalanche
+        h ^= h >> 33; h *= 0xc4ceb9fe1a85ec53ull; h ^= h >> 33;  // (spread bits for HLL)
+        return h;
+    }
+};
+
+// Touched by the BLE callback and the web task, so all access goes through
+// s_sessionMutex (shared with s_devices, updated in the same callback).
 static SemaphoreHandle_t s_sessionMutex = nullptr;
-static std::set<String> s_sessionBleMacs;
-static std::set<String> s_sessionSkimmerMacs;
+static HyperLogLog s_hllBle;
+static HyperLogLog s_hllSkimmer;
 
 // ---- Detailed device table for the web dashboard ----
 // Keyed by MAC, capped to bound memory. Guarded by s_sessionMutex (same lock as
@@ -36,8 +82,8 @@ class ScanCallbacks : public BLEAdvertisedDeviceCallbacks {
 
         // Session totals + detailed device table — all under one lock.
         if (s_sessionMutex && xSemaphoreTake(s_sessionMutex, portMAX_DELAY) == pdTRUE) {
-            if (s_sessionBleMacs.size() < BLE_SESSION_TRACK_CAP) s_sessionBleMacs.insert(mac);
-            if (skimmer) s_sessionSkimmerMacs.insert(mac);
+            s_hllBle.add(mac.c_str());
+            if (skimmer) s_hllSkimmer.add(mac.c_str());
 
             const uint32_t now = millis();
             auto it = s_devices.find(mac);
@@ -48,7 +94,18 @@ class ScanCallbacks : public BLEAdvertisedDeviceCallbacks {
                 r.seenCount++;
                 if (name.length()) r.name = name;     // keep the best name we've seen
                 if (skimmer) r.isSkimmer = true;       // sticky once flagged
-            } else if (s_devices.size() < BLE_DETAIL_CAP) {
+            } else {
+                // New device. When the table is full, evict the least-recently
+                // seen entry instead of dropping the newcomer, so the dashboard
+                // keeps tracking current devices across long runs / MAC floods.
+                // Actively-seen skimmers have a recent lastSeenMs, so they are
+                // not the eviction target while they're in range.
+                if (s_devices.size() >= BLE_DETAIL_CAP) {
+                    auto oldest = s_devices.begin();
+                    for (auto i = s_devices.begin(); i != s_devices.end(); ++i)
+                        if (i->second.lastSeenMs < oldest->second.lastSeenMs) oldest = i;
+                    s_devices.erase(oldest);
+                }
                 BleDeviceRecord r;
                 r.mac = mac;
                 r.name = name;
@@ -127,18 +184,21 @@ int ble_scanner_skimmer_count() {
     return s_skimmerCount;
 }
 
-static int sessionSetSize(const std::set<String>& s) {
+// Snapshot the estimator under the lock (a cheap ~1 KB copy), then compute the
+// cardinality estimate outside the lock so the BLE callback isn't blocked while
+// we iterate the registers.
+static uint32_t hllCount(const HyperLogLog& hll) {
     if (!s_sessionMutex) return 0;
-    int n = 0;
+    HyperLogLog snap;
     if (xSemaphoreTake(s_sessionMutex, portMAX_DELAY) == pdTRUE) {
-        n = (int)s.size();
+        snap = hll;
         xSemaphoreGive(s_sessionMutex);
     }
-    return n;
+    return snap.estimate();
 }
 
-int ble_scanner_session_count()         { return sessionSetSize(s_sessionBleMacs); }
-int ble_scanner_session_skimmer_count() { return sessionSetSize(s_sessionSkimmerMacs); }
+int ble_scanner_session_count()         { return (int)hllCount(s_hllBle); }
+int ble_scanner_session_skimmer_count() { return (int)hllCount(s_hllSkimmer); }
 
 std::vector<BleDeviceRecord> ble_scanner_snapshot() {
     std::vector<BleDeviceRecord> out;

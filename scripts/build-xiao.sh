@@ -39,6 +39,14 @@ PARTITION="${XIAO_PARTITION:-default_8MB}"
 FQBN="esp32:esp32:XIAO_ESP32C5:PartitionScheme=${PARTITION}"
 ARDUINO_CLI_BIN="${ARDUINO_CLI:-arduino-cli}"
 
+# The XIAO ESP32-C5 has no onboard RGB LED. The firmware drives a user-wired
+# WS2812B/SK6812 pixel and defaults to the "D0" header pin. Wire DIN->D0,
+# VCC->3V3, GND->GND, or set XIAO_SKIMMER_LED_GPIO=<gpio> to use a different pin.
+SKIMMER_LED_FLAG=""
+if [[ -n "${XIAO_SKIMMER_LED_GPIO:-}" ]]; then
+  SKIMMER_LED_FLAG=" -DSKIMMER_LED_PIN=${XIAO_SKIMMER_LED_GPIO}"
+fi
+
 echo "==> Assembling Arduino sketch at $SKETCH_DIR from src/"
 rm -rf "$SKETCH_DIR"
 mkdir -p "$SKETCH_DIR/src"
@@ -58,7 +66,7 @@ echo "==> Compiling for $FQBN"
 # left unset: this firmware fits in internal SRAM without PSRAM requirements.
 "$ARDUINO_CLI_BIN" compile \
   --fqbn "$FQBN" \
-  --build-property "compiler.cpp.extra_flags=-DVORD_BOARD_C5=1 -DVORD_BOARD_XIAO_C5=1 -DVORD_HAS_DISPLAY=0 -DVORD_HAS_GPS=0 -DVORD_HAS_SKIMMER_LED=1 -DVORD_HAS_MODE_BUTTON=0 -DCORE_DEBUG_LEVEL=0" \
+  --build-property "compiler.cpp.extra_flags=-DVORD_BOARD_C5=1 -DVORD_BOARD_XIAO_C5=1 -DVORD_HAS_DISPLAY=0 -DVORD_HAS_GPS=0 -DVORD_HAS_SKIMMER_LED=1 -DVORD_HAS_MODE_BUTTON=0 -DCORE_DEBUG_LEVEL=0${SKIMMER_LED_FLAG}" \
   --export-binaries \
   "$SKETCH_DIR"
 

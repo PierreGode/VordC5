@@ -14,11 +14,41 @@ This rebuild removes wardriving and serial command streaming entirely. The firmw
 - BLE scan starts at boot and runs continuously.
 - A WiFi Access Point + web dashboard start at boot (see below).
 - Detection is local on the device, no host protocol required.
-- Onboard RGB LED is used as proximity feedback:
+- An addressable RGB LED (WS2812B/SK6812) is used as proximity feedback:
 - Red/white blink pattern means skimmer signature detected.
 - Faster blinking means stronger RSSI (closer source).
 - No wardrive mode.
 - No serial command parser loop.
+
+## Proximity LED wiring
+
+The proximity LED is a single addressable **WS2812B / SK6812** pixel (the same
+type as an onboard "NeoPixel"), driven over one GPIO. It is *not* a plain on/off
+LED.
+
+- **ESP32-C5 Dev Board / WIFI6-KIT** — uses the onboard pixel automatically
+  (`RGB_BUILTIN`). Nothing to wire.
+- **Seeed XIAO ESP32-C5** — has **no** onboard RGB LED, so connect your own pixel:
+
+  | Pixel pin | Connect to |
+  |-----------|------------|
+  | DIN       | `D0` (default; GPIO1) |
+  | VCC       | `3V3` |
+  | GND       | `GND` |
+
+  Power the pixel from **3V3, not 5V**. A single pixel draws < 60 mA, and at a
+  3.3 V supply the 3.3 V data line is in spec — no level shifter needed. (If you
+  must run it at 5 V, an SK6812 or WS2812B-V5 tolerates 3.3 V data best.)
+
+**Using a different GPIO.** Override the default pin at build time:
+
+- XIAO build: `XIAO_SKIMMER_LED_GPIO=2 bash scripts/build-xiao.sh`
+- PlatformIO: add `-DSKIMMER_LED_PIN=2` to `build_flags` in
+  [`platformio.ini`](platformio.ini) (also works to drive an external pixel on
+  the dev board).
+
+See the LED notes in [`src/config.h`](src/config.h) for the full pin-resolution
+order and brightness/timing knobs (`SKIMMER_LED_*`).
 
 ## WiFi dashboard
 

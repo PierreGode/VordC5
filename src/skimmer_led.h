@@ -4,8 +4,11 @@
 #include <Arduino.h>
 #include "config.h"
 
-// Optional proximity alert LED, driven by the board's addressable RGB LED
-// (e.g. the ESP32-C5 WIFI6-KIT WS2812B on RGB_BUILTIN).
+// Optional proximity alert LED, driven by a single addressable RGB pixel
+// (WS2812B / SK6812) over one GPIO. This is the board's onboard pixel where one
+// exists (e.g. the ESP32-C5 WIFI6-KIT WS2812B on RGB_BUILTIN), or a user-wired
+// pixel on boards without one (e.g. Seeed XIAO ESP32-C5). The GPIO is selected
+// by SKIMMER_LED_PIN — see the wiring/override notes in config.h.
 //
 // When enabled (-DVORD_HAS_SKIMMER_LED=1) the LED blinks while a flagged
 // device is in range and blinks faster the closer it is (stronger RSSI means

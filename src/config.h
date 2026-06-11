@@ -106,12 +106,31 @@ static const char* SKIMMER_NAMES_DEFAULT[] = {
 
 // ----- Proximity alert LED (optional — enabled by -DVORD_HAS_SKIMMER_LED=1) -----
 #if VORD_HAS_SKIMMER_LED
+// The proximity LED is a single addressable WS2812B / SK6812 pixel, driven on
+// one GPIO via rgbLedWrite() (Arduino-ESP32's RMT pixel driver). It is NOT a
+// plain on/off LED — pointing this at an ordinary GPIO LED will not work.
+//
+// Wiring a user-supplied pixel (e.g. on the Seeed XIAO ESP32-C5, which has no
+// onboard RGB LED):
+//   DIN -> SKIMMER_LED_PIN   VCC -> 3V3   GND -> GND
+// Power the pixel from 3V3 (not 5V): one pixel draws < 60 mA and a 3.3 V data
+// line is in-spec when the pixel itself runs at 3.3 V, so no level shifter is
+// needed. (SK6812 / WS2812B-V5 are the most tolerant if you do power it at 5 V.)
+//
+// Pin resolution (first match wins):
+//   1. -DSKIMMER_LED_PIN=<gpio> on the build command line — always wins; use it
+//      to point the firmware at whatever GPIO you wired the pixel to.
+//   2. Seeed XIAO ESP32-C5: no onboard pixel → default to the "D0" header pin.
+//   3. Boards with an onboard pixel (C5 dev kit / WIFI6-KIT): RGB_BUILTIN.
+//   4. Generic fallback GPIO for any other board.
 #ifndef SKIMMER_LED_PIN
-#ifdef RGB_BUILTIN
-#define SKIMMER_LED_PIN        RGB_BUILTIN
-#else
-#define SKIMMER_LED_PIN        LED_BUILTIN
-#endif
+#  if VORD_BOARD_XIAO_C5
+#    define SKIMMER_LED_PIN     D0   // XIAO silkscreen "D0" (GPIO1); override with -DSKIMMER_LED_PIN
+#  elif defined(RGB_BUILTIN)
+#    define SKIMMER_LED_PIN     RGB_BUILTIN
+#  else
+#    define SKIMMER_LED_PIN     8    // generic free GPIO; override with -DSKIMMER_LED_PIN
+#  endif
 #endif
 #ifndef SKIMMER_LED_BRIGHTNESS
 #define SKIMMER_LED_BRIGHTNESS 40      // 0-255 white level when lit (these LEDs are bright)
