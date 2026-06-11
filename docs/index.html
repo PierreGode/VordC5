@@ -1,0 +1,354 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Vord C5 - Web Flasher</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet" />
+    <style>
+      :root {
+        --bg: #f6f8f3;
+        --bg-soft: #eaf0de;
+        --ink: #152018;
+        --muted: #4f6252;
+        --accent: #f25f3a;
+        --accent-2: #0da3b1;
+        --panel: #ffffff;
+        --line: #d8e1d0;
+      }
+
+      * { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; }
+
+      body {
+        font-family: "Space Grotesk", sans-serif;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at 10% 10%, rgba(13, 163, 177, 0.18), transparent 36%),
+          radial-gradient(circle at 92% 18%, rgba(242, 95, 58, 0.18), transparent 30%),
+          linear-gradient(135deg, var(--bg) 0%, #ffffff 50%, var(--bg-soft) 100%);
+        min-height: 100vh;
+      }
+
+      .wrap {
+        width: min(980px, 94vw);
+        margin: 0 auto;
+        padding: 28px 0 40px;
+      }
+
+      .hero {
+        display: grid;
+        grid-template-columns: 1.1fr 0.9fr;
+        gap: 20px;
+        align-items: stretch;
+      }
+
+      .hero-card {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 22px;
+        padding: 28px;
+        box-shadow: 0 18px 44px rgba(20, 30, 22, 0.08);
+      }
+
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 7px 12px;
+        border-radius: 999px;
+        border: 1px solid var(--line);
+        color: var(--muted);
+        font-size: 12px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        margin: 16px 0 8px;
+        font-family: "Sora", sans-serif;
+        font-size: clamp(34px, 6vw, 62px);
+        line-height: 0.95;
+        letter-spacing: -0.03em;
+      }
+
+      .accent { color: var(--accent); }
+
+      .lead {
+        margin: 12px 0 0;
+        color: var(--muted);
+        max-width: 58ch;
+        font-size: 16px;
+      }
+
+      .hero-art {
+        border-radius: 22px;
+        border: 1px solid var(--line);
+        background:
+          linear-gradient(160deg, rgba(13, 163, 177, 0.16), rgba(13, 163, 177, 0) 45%),
+          linear-gradient(320deg, rgba(242, 95, 58, 0.2), rgba(242, 95, 58, 0) 50%),
+          #111d14;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .hero-art::before {
+        content: "BLE";
+        position: absolute;
+        left: 20px;
+        top: 16px;
+        font-family: "Sora", sans-serif;
+        font-weight: 800;
+        color: #ffffff;
+        opacity: 0.9;
+      }
+
+      .hero-art::after {
+        content: "C5 ONLY";
+        position: absolute;
+        right: 20px;
+        bottom: 16px;
+        color: rgba(255, 255, 255, 0.8);
+        letter-spacing: 0.08em;
+        font-size: 12px;
+      }
+
+      .waves {
+        position: absolute;
+        inset: 0;
+        background:
+          repeating-radial-gradient(circle at 18% 42%, transparent 0 10px, rgba(255,255,255,0.1) 10px 11px),
+          repeating-radial-gradient(circle at 73% 58%, transparent 0 14px, rgba(255,255,255,0.08) 14px 15px);
+        animation: pulse 3.8s ease-in-out infinite;
+      }
+
+      @keyframes pulse {
+        0%, 100% { transform: scale(1); opacity: 0.75; }
+        50% { transform: scale(1.04); opacity: 1; }
+      }
+
+      .panel {
+        margin-top: 22px;
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 22px;
+        padding: 24px;
+        box-shadow: 0 18px 44px rgba(20, 30, 22, 0.08);
+      }
+
+      .panel h2 {
+        margin: 0 0 10px;
+        font-family: "Sora", sans-serif;
+        font-size: 22px;
+      }
+
+      .panel p {
+        margin: 0;
+        color: var(--muted);
+      }
+
+      .targets {
+        margin-top: 18px;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+      }
+
+      button.bind {
+        border: 0;
+        border-radius: 14px;
+        background: linear-gradient(135deg, var(--accent), #ff7b3e);
+        color: #fff;
+        font-family: "Sora", sans-serif;
+        font-size: 15px;
+        font-weight: 700;
+        letter-spacing: 0.01em;
+        padding: 14px 16px;
+        cursor: pointer;
+        transition: transform 0.14s ease, box-shadow 0.2s ease;
+        box-shadow: 0 10px 18px rgba(242, 95, 58, 0.22);
+      }
+
+      button.bind:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 14px 24px rgba(242, 95, 58, 0.3);
+      }
+
+      button.bind-ghost {
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: #fff;
+        color: var(--ink);
+        font-family: "Sora", sans-serif;
+        font-size: 13px;
+        font-weight: 600;
+        padding: 11px 14px;
+        cursor: pointer;
+      }
+
+      .note {
+        margin-top: 14px;
+        font-size: 13px;
+        color: var(--muted);
+      }
+
+      .foot {
+        margin-top: 18px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .flash-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 80;
+        display: grid;
+        place-items: center;
+        background: rgba(10, 16, 12, 0.62);
+        backdrop-filter: blur(3px);
+      }
+
+      .flash-overlay[hidden] { display: none; }
+
+      .flash-dialog {
+        width: min(620px, 94vw);
+        border-radius: 18px;
+        border: 1px solid #2d3f31;
+        background: #0f1912;
+        color: #e8f1e7;
+        padding: 22px;
+      }
+
+      .flash-dialog h3 {
+        margin: 0 0 10px;
+        font-family: "Sora", sans-serif;
+        letter-spacing: 0.02em;
+      }
+
+      .flash-progress-track {
+        height: 9px;
+        border-radius: 999px;
+        overflow: hidden;
+        border: 1px solid #38533e;
+        background: #1a2a1f;
+      }
+
+      .flash-progress-fill {
+        width: 0;
+        height: 100%;
+        background: linear-gradient(90deg, var(--accent-2), var(--accent));
+      }
+
+      .flash-pct { margin: 8px 0 2px; color: #9ec9b1; font-size: 13px; min-height: 18px; }
+      .flash-status { margin: 0 0 10px; color: #c8dec9; }
+
+      .flash-log {
+        margin: 0 0 12px;
+        max-height: 220px;
+        overflow-y: auto;
+        border-radius: 12px;
+        border: 1px solid #39523f;
+        background: #09110c;
+        padding: 12px;
+        color: #b8d2bb;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 12px;
+        line-height: 1.45;
+        white-space: pre-wrap;
+      }
+
+      .flash-confirm-row {
+        display: flex;
+        justify-content: center;
+        gap: 10px;
+        margin-bottom: 10px;
+      }
+
+      .browser-warn {
+        display: none;
+        margin-top: 12px;
+        border-radius: 10px;
+        border: 1px solid #f8b7a7;
+        background: #fff3ef;
+        color: #8a3b28;
+        padding: 10px 12px;
+        font-size: 13px;
+      }
+
+      @media (max-width: 760px) {
+        .hero { grid-template-columns: 1fr; }
+        .targets { grid-template-columns: 1fr; }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="wrap">
+      <section class="hero">
+        <article class="hero-card">
+          <div class="badge">Skim Detector Firmware</div>
+          <h1>Vord <span class="accent">C5</span></h1>
+          <p class="lead">
+            Continuous BLE skimmer detection for ESP32-C5 boards, always-on skimmer hunting.
+          </p>
+        </article>
+        <aside class="hero-art" aria-hidden="true">
+          <div class="waves"></div>
+        </aside>
+      </section>
+
+      <section class="panel">
+        <h2>Flash Your Board</h2>
+        <p>Select your exact hardware profile. The installer validates the connected chip before writing.</p>
+
+        <div class="targets">
+          <button class="bind" onclick="flashDevice('manifest-esp32c5.json')">Flash ESP32-C5 Dev Board</button>
+          <button class="bind" onclick="flashDevice('manifest-xiao-esp32c5.json')">Flash Seeed XIAO ESP32-C5</button>
+        </div>
+
+        <p class="note">
+          If flashing fails, hold BOOT, tap RESET, release BOOT, then retry.
+        </p>
+
+        <div id="browserWarn" class="browser-warn">
+          Web Serial is only available in desktop Chrome, Edge, or Opera.
+        </div>
+
+        <div class="foot">
+          Build: <strong id="build">-</strong>
+        </div>
+      </section>
+    </main>
+
+    <div id="flash-overlay" class="flash-overlay" hidden>
+      <div class="flash-dialog">
+        <h3>Install Vord C5</h3>
+        <div class="flash-progress-track">
+          <div id="flash-bar" class="flash-progress-fill"></div>
+        </div>
+        <p id="flash-pct" class="flash-pct"></p>
+        <p id="flash-status" class="flash-status">Preparing...</p>
+        <pre id="flash-log" class="flash-log"></pre>
+        <div id="flash-confirm-row" class="flash-confirm-row" hidden>
+          <button id="flash-confirm-yes" class="bind">Flash Now</button>
+          <button id="flash-confirm-no" class="bind-ghost">Cancel</button>
+        </div>
+        <button id="flash-close" class="bind" hidden>Close</button>
+      </div>
+    </div>
+
+    <script>
+      if (!("serial" in navigator)) {
+        document.getElementById("browserWarn").style.display = "block";
+      }
+      fetch("version.json", { cache: "no-store" })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((v) => {
+          if (v && v.build) document.getElementById("build").textContent = v.build;
+        })
+        .catch(() => {});
+    </script>
+    <script type="module" src="js/flasher.js"></script>
+  </body>
+</html>

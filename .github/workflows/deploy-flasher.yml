@@ -1,0 +1,119 @@
+name: Build Vord C5 and deploy flasher
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Cache PlatformIO & Arduino cores
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.platformio
+            ~/.arduino15
+            ~/.cache/pip
+          key: pio-${{ runner.os }}-${{ hashFiles('platformio.ini') }}
+          restore-keys: pio-${{ runner.os }}-
+
+      - name: Install PlatformIO
+        run: |
+          python -m pip install --upgrade pip
+          pip install platformio esptool
+
+      - name: Build firmware (ESP32-C5 Dev)
+        run: pio run -e esp32c5-dev
+
+      - name: Install arduino-cli
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | sh
+          echo "$PWD/bin" >> $GITHUB_PATH
+
+      - name: Install ESP32 Arduino core
+        run: |
+          arduino-cli config init --overwrite
+          arduino-cli config add board_manager.additional_urls \
+            "https://espressif.github.io/arduino-esp32/package_esp32_dev_index.json"
+          arduino-cli core update-index
+          arduino-cli core install esp32:esp32
+
+      - name: Build firmware (Seeed XIAO ESP32-C5)
+        run: bash scripts/build-xiao.sh
+
+      - name: Stage site
+        run: |
+          mkdir -p site/firmware
+          cp -r docs/. site/
+
+          BOOT_APP0=$(find ~/.platformio/packages -name boot_app0.bin | head -n 1)
+          if [ -z "$BOOT_APP0" ]; then
+            echo "boot_app0.bin not found"; exit 1
+          fi
+
+          C5_DIR=.pio/build/esp32c5-dev
+          python -m esptool --chip esp32c5 merge_bin \
+            --output site/firmware/vord-c5-dev.bin \
+            --flash_mode dio --flash_freq 80m --flash_size 16MB \
+            --target-offset 0x0 \
+            0x2000   "$C5_DIR/bootloader.bin" \
+            0x8000   "$C5_DIR/partitions.bin" \
+            0xe000   "$BOOT_APP0" \
+            0x10000  "$C5_DIR/firmware.bin"
+
+          XIAO_DIR=build-sketch/VordC5/build/esp32.esp32.XIAO_ESP32C5
+          BOOT_APP0_ARD=$(find ~/.arduino15/packages/esp32 -name boot_app0.bin | head -n 1)
+          if [ -z "$BOOT_APP0_ARD" ]; then
+            echo "arduino15 boot_app0.bin not found"; exit 1
+          fi
+          python -m esptool --chip esp32c5 merge_bin \
+            --output site/firmware/vord-c5-xiao.bin \
+            --flash_mode dio --flash_freq 80m --flash_size 8MB \
+            --target-offset 0x0 \
+            0x2000   "$XIAO_DIR/VordC5.ino.bootloader.bin" \
+            0x8000   "$XIAO_DIR/VordC5.ino.partitions.bin" \
+            0xe000   "$BOOT_APP0_ARD" \
+            0x10000  "$XIAO_DIR/VordC5.ino.bin"
+
+          VERSION="$(date -u +%-m.%-d).${GITHUB_SHA::7}"
+          echo "Version: $VERSION"
+
+          for m in manifest-esp32c5.json manifest-xiao-esp32c5.json manifest.json; do
+            jq --arg v "$VERSION" '.version = $v' "site/$m" > "site/$m.tmp"
+            mv "site/$m.tmp" "site/$m"
+          done
+
+          echo "{\"build\":\"$VERSION\",\"sha\":\"${GITHUB_SHA::7}\",\"date\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}" > site/version.json
+
+      - uses: actions/configure-pages@v5
+        with:
+          # Enable GitHub Pages via the API if it isn't already, instead of
+          # failing with "Get Pages site failed" on first run.
+          enablement: true
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - id: deployment
+        uses: actions/deploy-pages@v4
