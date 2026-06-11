@@ -277,6 +277,41 @@
         font-size: 13px;
       }
 
+      .mon-controls {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 10px;
+        margin-top: 16px;
+      }
+
+      .mon-status { color: var(--muted); font-size: 13px; }
+
+      .mon-baud {
+        font-family: inherit;
+        padding: 7px 9px;
+        border-radius: 10px;
+        border: 1px solid var(--line);
+        background: #fff;
+        color: var(--ink);
+      }
+
+      .console {
+        margin: 16px 0 0;
+        height: 300px;
+        overflow-y: auto;
+        border-radius: 14px;
+        border: 1px solid #39523f;
+        background: #09110c;
+        padding: 14px;
+        color: #b8d2bb;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 12.5px;
+        line-height: 1.5;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+
       @media (max-width: 760px) {
         .hero { grid-template-columns: 1fr; }
         .targets { grid-template-columns: 1fr; }
@@ -319,6 +354,27 @@
           Build: <strong id="build">-</strong>
         </div>
       </section>
+
+      <section class="panel">
+        <h2>Serial Monitor</h2>
+        <p>Watch your board's live serial output &mdash; boot info, the AP address, and the heap-health log. Works on any flashed board; close the flash dialog first so the serial port is free.</p>
+
+        <div class="mon-controls">
+          <button id="mon-connect" class="bind">Connect Serial Monitor</button>
+          <button id="mon-disconnect" class="bind-ghost" hidden>Disconnect</button>
+          <button id="mon-clear" class="bind-ghost">Clear</button>
+          <label class="mon-status">Baud
+            <select id="mon-baud" class="mon-baud">
+              <option value="115200" selected>115200</option>
+              <option value="460800">460800</option>
+              <option value="921600">921600</option>
+            </select>
+          </label>
+          <span id="mon-status" class="mon-status">Not connected</span>
+        </div>
+
+        <pre id="mon-output" class="console" aria-live="polite"></pre>
+      </section>
     </main>
 
     <div id="flash-overlay" class="flash-overlay" hidden>
@@ -350,5 +406,6 @@
         .catch(() => {});
     </script>
     <script type="module" src="js/flasher.js"></script>
+    <script type="module" src="js/serial-monitor.js"></script>
   </body>
 </html>

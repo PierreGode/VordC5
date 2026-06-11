@@ -142,6 +142,29 @@ static const char* SKIMMER_NAMES_DEFAULT[] = {
 #define SKIMMER_LED_SLOW_MS   1000     // blink half-period at farthest range
 #define SKIMMER_LED_HOLD_MS  10000     // keep blinking this long after the last sighting
 #define SKIMMER_LED_TASK_STACK 2048
+
+// Proximity COLOR for the non-white blink phase. The white phase always blinks;
+// the alternating phase changes color with distance so range is readable at a
+// glance — far → blue, then yellow → orange → red as you close in. Approximate
+// ranges (RSSI vs. distance is environment-dependent — tune to taste):
+//   ~30 m blue   ~20 m yellow   ~10 m orange   ~1 m red
+// Below YELLOW the color is solid blue; from YELLOW up to RED it fades
+// yellow → orange → red (full red, green channel shrinking as you approach).
+#define SKIMMER_LED_RSSI_RED    -52    // at/above this → solid red (closest, ~1 m)
+#define SKIMMER_LED_RSSI_YELLOW -80    // at this → yellow (~20 m); below → blue (~30 m+)
+
+// Some boards wire the addressable LED with red and green swapped, so a value
+// the firmware sends as "red" lights up green. The ESP32-C5 dev board's onboard
+// RGB LED is one of them, so the swap defaults on there; a user-wired standard
+// WS2812B/SK6812 (e.g. on the XIAO) needs no swap. Override for your hardware:
+// set to 1 if red shows as green, 0 if colors are already correct.
+#ifndef SKIMMER_LED_SWAP_RG
+#  if VORD_BOARD_XIAO_C5
+#    define SKIMMER_LED_SWAP_RG 0    // user-wired standard pixel: no swap
+#  else
+#    define SKIMMER_LED_SWAP_RG 1    // C5 dev board onboard LED: R/G swapped
+#  endif
+#endif
 #endif
 
 #endif // CONFIG_H

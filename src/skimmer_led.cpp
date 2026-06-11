@@ -30,22 +30,51 @@ static uint32_t rssiToHalfPeriod(int rssi) {
         (pos * ((long)SKIMMER_LED_SLOW_MS - (long)SKIMMER_LED_FAST_MS)) / span);
 }
 
-static inline void ledOff() {
-    rgbLedWrite(SKIMMER_LED_PIN, 0, 0, 0);
+// Single write path so the optional red/green channel swap (for boards wired
+// that way — see SKIMMER_LED_SWAP_RG) applies to every color we emit.
+static inline void ledWrite(uint8_t r, uint8_t g, uint8_t b) {
+#if SKIMMER_LED_SWAP_RG
+    rgbLedWrite(SKIMMER_LED_PIN, g, r, b);
+#else
+    rgbLedWrite(SKIMMER_LED_PIN, r, g, b);
+#endif
 }
 
-// Show one phase of the alternating blink. Phase 0 is red for skimmer,
-// phase 1 is white.
-static void ledPhase(bool whitePhase, int type) {
-    (void)type;
-    const uint8_t b = SKIMMER_LED_BRIGHTNESS;
-    uint8_t r, g, bl;
-    if (whitePhase) {
-        r = g = bl = b;                                   // white
-    } else {
-        r = b; g = 0; bl = 0;                             // red (skimmer)
+static inline void ledOff() {
+    ledWrite(0, 0, 0);
+}
+
+// Proximity color for the non-white blink phase. Far away (weak RSSI) → blue;
+// as RSSI rises (getting closer) the color fades yellow → orange → red. The
+// thresholds live in config.h (SKIMMER_LED_RSSI_YELLOW / _RED).
+static void proximityColor(int rssi, uint8_t& r, uint8_t& g, uint8_t& b) {
+    const uint8_t B = SKIMMER_LED_BRIGHTNESS;
+    if (rssi < SKIMMER_LED_RSSI_YELLOW) {            // far → solid blue
+        r = 0; g = 0; b = B;
+        return;
     }
-    rgbLedWrite(SKIMMER_LED_PIN, r, g, bl);
+    // From the yellow threshold up to the red threshold: full red, with the
+    // green channel fading from full (yellow) down to none (red) as we approach.
+    const int hi = SKIMMER_LED_RSSI_RED;             // at/above → pure red
+    const int lo = SKIMMER_LED_RSSI_YELLOW;          // at → yellow
+    if (rssi > hi) rssi = hi;
+    long green = (long)B * (long)(hi - rssi) / (long)(hi - lo);
+    if (green < 0) green = 0;
+    if (green > B) green = B;
+    r = B; g = (uint8_t)green; b = 0;
+}
+
+// Show one phase of the alternating blink: white on the white phase, otherwise
+// the distance-coded proximity color (blue → yellow → orange → red).
+static void ledPhase(bool whitePhase, int rssi) {
+    if (whitePhase) {
+        const uint8_t b = SKIMMER_LED_BRIGHTNESS;
+        ledWrite(b, b, b);                           // white
+    } else {
+        uint8_t r, g, b;
+        proximityColor(rssi, r, g, b);
+        ledWrite(r, g, b);
+    }
 }
 
 static void skimmer_led_task(void*) {
@@ -59,9 +88,9 @@ static void skimmer_led_task(void*) {
             const uint8_t r = s_flashR, g = s_flashG, b = s_flashB;
             s_flashPending = 0;
             for (int i = 0; i < n; i++) {
-                rgbLedWrite(SKIMMER_LED_PIN, r, g, b);
+                ledWrite(r, g, b);
                 vTaskDelay(pdMS_TO_TICKS(150));
-                rgbLedWrite(SKIMMER_LED_PIN, 0, 0, 0);
+                ledWrite(0, 0, 0);
                 vTaskDelay(pdMS_TO_TICKS(150));
             }
             whitePhase = false;
@@ -75,7 +104,7 @@ static void skimmer_led_task(void*) {
             // A flagged device is (recently) in range — alternate the two
             // colors at the proximity rate.
             whitePhase = !whitePhase;
-            ledPhase(whitePhase, (int)s_lastType);
+            ledPhase(whitePhase, (int)s_lastRssi);
             vTaskDelay(pdMS_TO_TICKS(rssiToHalfPeriod((int)s_lastRssi)));
         } else {
             // Nothing nearby — make sure the LED is off and idle-poll.

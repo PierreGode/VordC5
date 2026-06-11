@@ -10,11 +10,12 @@
 // pixel on boards without one (e.g. Seeed XIAO ESP32-C5). The GPIO is selected
 // by SKIMMER_LED_PIN — see the wiring/override notes in config.h.
 //
-// When enabled (-DVORD_HAS_SKIMMER_LED=1) the LED blinks while a flagged
-// device is in range and blinks faster the closer it is (stronger RSSI means
-// a shorter half-period). The blink colors identify the alert type:
-//   * Skimmer  → alternates RED   <-> white
-// The LED turns itself off once nothing has been seen for SKIMMER_LED_HOLD_MS.
+// When enabled (-DVORD_HAS_SKIMMER_LED=1) the LED blinks while a flagged device
+// is in range and blinks faster the closer it is (stronger RSSI → shorter
+// half-period). It alternates white with a distance-coded color so range is
+// readable at a glance: far → blue, then yellow → orange → red as you close in
+// (thresholds in config.h: SKIMMER_LED_RSSI_YELLOW / _RED). The LED turns itself
+// off once nothing has been seen for SKIMMER_LED_HOLD_MS.
 
 // Alert type carried into the LED. Defined unconditionally so callers compile
 // the same whether or not the feature is enabled.
