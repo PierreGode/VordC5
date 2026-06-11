@@ -176,6 +176,7 @@ Public or Private Harassment: Unwanted communication or intimidation in any form
 Project maintainers are responsible for interpreting and enforcing this Code of Conduct. Violations may result in actions such as warnings, temporary restrictions, or permanent removal from the project or related communication channels.
 
 🙏 Acknowledgments
+#Pierre
 
 This Code of Conduct is adapted from the Contributor Covenant, version 2.0
 
