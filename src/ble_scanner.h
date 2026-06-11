@@ -26,6 +26,12 @@ struct BleDeviceRecord {
 void ble_scanner_init();
 void ble_scanner_start(BleMode mode);
 void ble_scanner_stop();
+
+// Restart the in-progress scan to flush the BLE stack's internal advertiser
+// list (which an indefinite scan never frees). Required to survive a flood of
+// unique MAC addresses, e.g. a Flipper running BLE-spam. Preserves all
+// app-level counters and the device table; safe no-op if not scanning.
+void ble_scanner_refresh();
 int  ble_scanner_count();
 int  ble_scanner_skimmer_count();
 

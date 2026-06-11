@@ -53,6 +53,16 @@
 #define BLE_SCAN_WINDOW_MS   50
 #endif
 
+// How often (ms) to restart the BLE scan. An indefinite NimBLE scan never frees
+// its internal per-advertiser records, so a flood of unique MACs (e.g. a Flipper
+// running BLE-spam) would exhaust the heap and silently kill the scan — taking
+// the proximity LED with it. Restarting periodically flushes that list. Short
+// enough that the worst-case MAC flood between restarts stays well within free
+// heap; long enough that the brief gap at each restart costs negligible coverage.
+#ifndef BLE_SCAN_REFRESH_MS
+#define BLE_SCAN_REFRESH_MS 1000
+#endif
+
 // Max distinct devices kept in the detailed table that feeds the dashboard.
 // Bounds RAM; the session unique-MAC counters are tracked separately and higher.
 #ifndef BLE_DETAIL_CAP

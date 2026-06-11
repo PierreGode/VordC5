@@ -104,6 +104,21 @@ void ble_scanner_stop() {
     s_mode = BLE_MODE_OFF;
 }
 
+void ble_scanner_refresh() {
+    // The C5 uses NimBLE, which keeps one heap-allocated record per unique
+    // advertiser MAC for the life of a single start() and never frees them
+    // (its m_maxResults defaults to "store all"). A Flipper running BLE-spam
+    // cycles through thousands of random MACs, so an indefinite scan exhausts
+    // the heap within seconds — the scan then stops delivering callbacks and
+    // the proximity LED goes quiet. Stop → clear → restart frees that vector
+    // while leaving our own counters and device table intact (we deliberately
+    // do NOT route through ble_scanner_start(), which would zero the counters).
+    if (!s_pScan || s_mode == BLE_MODE_OFF) return;
+    s_pScan->stop();
+    s_pScan->clearResults();
+    s_pScan->start(0, [](BLEScanResults){}, false);
+}
+
 int ble_scanner_count() {
     return s_bleCount;
 }
