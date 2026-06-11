@@ -16,6 +16,7 @@
 #include "runtime_config.h"
 #include "skimmer_led.h"
 #include "web_portal.h"
+#include "battery.h"
 
 void setup() {
     delay(250);
@@ -23,6 +24,7 @@ void setup() {
     Serial.begin(115200);   // USB CDC; prints the AP address/band for diagnostics
 
     runtime_config_init();
+    battery_init();
     ble_scanner_init();
 
     // WiFi AP + dashboard. Brought up before scanning so the network is

@@ -42,6 +42,36 @@
 #define AP_CHANNEL_FALLBACK_2G 6
 #endif
 
+// ----- Battery monitoring (LiPo voltage on the dashboard) -----
+// Both supported boards route their battery divider to GPIO6, but with
+// different ratios:
+//   Waveshare C5 dev kit (WIFI6-KIT): BAT -> 200K/100K divider -> GPIO6,
+//     always connected (no enable pin). Ratio 3.0.
+//   Seeed XIAO ESP32-C5: BAT -> 100K/100K divider -> GPIO6, gated by a load
+//     switch on GPIO26 (drive HIGH to sample). Ratio 2.0.
+// Set -DVBAT_ADC_PIN=-1 to disable monitoring (dashboard hides the readout).
+#ifndef VBAT_ADC_PIN
+#define VBAT_ADC_PIN 6
+#endif
+#ifndef VBAT_EN_PIN
+#  if VORD_BOARD_XIAO_C5
+#    define VBAT_EN_PIN 26
+#  else
+#    define VBAT_EN_PIN -1   // dev kit divider has no enable gate
+#  endif
+#endif
+#ifndef VBAT_DIVIDER
+#  if VORD_BOARD_XIAO_C5
+#    define VBAT_DIVIDER 2.0f
+#  else
+#    define VBAT_DIVIDER 3.0f
+#  endif
+#endif
+// How often (ms) to re-sample the battery; readings are cached in between.
+#ifndef VBAT_REFRESH_MS
+#define VBAT_REFRESH_MS 5000
+#endif
+
 // ----- BLE scan timing (coexistence-critical) -----
 // WiFi (AP + web) and BLE time-share the single radio. The coexistence
 // arbiter can only give WiFi the gaps between scan windows, so the window

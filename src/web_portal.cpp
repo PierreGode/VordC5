@@ -3,6 +3,7 @@
 #include "ble_scanner.h"
 #include "scan_cycle.h"
 #include "runtime_config.h"
+#include "battery.h"
 
 #include <WiFi.h>
 #include <WebServer.h>
@@ -52,6 +53,9 @@ static void handleApiStatus() {
     json += ",\"sessionBle\":";   json += String(ble_scanner_session_count());
     json += ",\"sessionSkimmer\":"; json += String(ble_scanner_session_skimmer_count());
     json += ",\"freeHeap\":";     json += String((uint32_t)ESP.getFreeHeap());
+    const int vbatMv = battery_millivolts();
+    json += ",\"vbatMv\":";       json += String(vbatMv);
+    json += ",\"batPct\":";       json += String(vbatMv ? battery_percent(vbatMv) : 0);
     json += ",\"skimmerNames\":"; appendJsonString(json, getSkimmerNamesCsv());
     json += "}";
     s_server.send(200, "application/json", json);
@@ -154,7 +158,7 @@ th:nth-child(2),td:nth-child(2){display:none}
 </div>
 <div class=meta>
 <span id=scan class="dot on">Scanning</span><br>
-uptime <b id=up>-</b> &middot; heap <b id=heap>-</b>
+uptime <b id=up>-</b> &middot; heap <b id=heap>-</b><span id=batw style=display:none> &middot; batt <b id=bat>-</b></span>
 </div>
 </div>
 
@@ -192,6 +196,7 @@ async function tick(){
   $('scan').className='dot '+(st.scanning?'on':'off');
   $('up').textContent=fmtUp(st.uptimeMs);
   $('heap').textContent=Math.round(st.freeHeap/1024)+'KB';
+  if(st.vbatMv){$('batw').style.display='';$('bat').textContent=(st.vbatMv/1000).toFixed(2)+'V '+st.batPct+'%';$('bat').style.color=st.batPct<=15?'var(--accent)':''}
   let rows=dv.devices.slice().sort((a,b)=>b.rssi-a.rssi);
   if(skimOnly)rows=rows.filter(d=>d.skimmer);
   $('rows').innerHTML=rows.map(d=>{var p=rssiPct(d.rssi);return '<tr class="'+(d.skimmer?'skim':'')+'"><td>'+(esc(d.name)||'<span class=dim>(unnamed)</span>')+'<div class="mac-sub mono">'+esc(d.mac)+'</div></td><td class=mono>'+esc(d.mac)+'</td><td><span class=bar><i style="width:'+p+'%"></i></span><span class=dim>'+d.rssi+'</span></td><td>'+(d.skimmer?'<span class=tag>SKIMMER</span>':'<span class="tag g">BLE</span>')+'</td></tr>'}).join('')||'<tr><td colspan=4 class=dim>No devices yet&hellip;</td></tr>';
