@@ -9,10 +9,15 @@ permissions:
   contents: read
   pages: write
   id-token: write
+  actions: write   # delete stale github-pages artifacts from prior run attempts
 
+# Allow only one Pages deployment at a time, but never cancel an in-progress
+# run. Cancelling mid-run can leave its uploaded "github-pages" artifact behind,
+# which makes the next run's deploy-pages fail with "Multiple artifacts named
+# github-pages were unexpectedly found." Letting runs finish avoids that.
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   build-and-deploy:
@@ -129,6 +134,21 @@ jobs:
           # Enable GitHub Pages via the API if it isn't already, instead of
           # failing with "Get Pages site failed" on first run.
           enablement: true
+
+      - name: Remove stale github-pages artifacts from prior attempts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # On a re-run, the previous attempt's "github-pages" artifact lingers
+          # and makes deploy-pages fail with "Multiple artifacts named
+          # github-pages were unexpectedly found." Delete any that already exist
+          # for this run before uploading a fresh one. Non-fatal.
+          ids=$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/artifacts" \
+                  --jq '.artifacts[] | select(.name=="github-pages") | .id' 2>/dev/null || true)
+          for id in $ids; do
+            echo "Deleting stale artifact $id"
+            gh api -X DELETE "repos/${GITHUB_REPOSITORY}/actions/artifacts/${id}" || true
+          done
 
       - uses: actions/upload-pages-artifact@v3
         with:
