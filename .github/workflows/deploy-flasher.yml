@@ -105,6 +105,25 @@ jobs:
 
           echo "{\"build\":\"$VERSION\",\"sha\":\"${GITHUB_SHA::7}\",\"date\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}" > site/version.json
 
+      - name: Force Pages source to GitHub Actions
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # If Pages is set to "Deploy from a branch", GitHub keeps publishing the
+          # README via Jekyll and ignores this workflow's artifact. Force the
+          # source to the "workflow" build type so our flasher site is what ships.
+          # Non-fatal: if org/token policy blocks the change, set it manually in
+          # Settings > Pages > Source = "GitHub Actions".
+          if gh api "repos/${GITHUB_REPOSITORY}/pages" >/dev/null 2>&1; then
+            gh api -X PUT "repos/${GITHUB_REPOSITORY}/pages" -f build_type=workflow \
+              && echo "Pages source set to GitHub Actions" \
+              || echo "WARN: could not update Pages source — set it manually in Settings > Pages"
+          else
+            gh api -X POST "repos/${GITHUB_REPOSITORY}/pages" -f build_type=workflow \
+              && echo "Pages enabled with GitHub Actions source" \
+              || echo "WARN: could not enable Pages — enable it in Settings > Pages (Source: GitHub Actions)"
+          fi
+
       - uses: actions/configure-pages@v5
         with:
           # Enable GitHub Pages via the API if it isn't already, instead of
