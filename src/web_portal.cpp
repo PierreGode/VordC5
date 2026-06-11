@@ -209,10 +209,14 @@ static void handleRoot() {
     s_server.send_P(200, "text/html", INDEX_HTML);
 }
 
-// Captive-portal: most OS connectivity checks hit an unknown path; serving the
-// dashboard (200) prompts the "sign in to network" sheet to open it.
+// Unknown paths must return a clean failure (404), NOT the dashboard. OS
+// connectivity probes (Android generate_204, iOS captive.apple.com) hit an
+// unknown host/path; failing them makes the phone mark this AP "no internet"
+// and keep routing internet traffic over mobile data, while 192.168.4.1 stays
+// reachable over WiFi. Serving the dashboard here would look like a captive
+// portal and stall the phone's data connection.
 static void handleNotFound() {
-    handleRoot();
+    s_server.send(404, "text/plain", "Vord C5 - dashboard at http://192.168.4.1/");
 }
 
 // ---- Web server task (runs independently from main loop) ----
@@ -256,8 +260,12 @@ void web_portal_init() {
                   AP_SSID, ok ? "up" : "FAILED TO START",
                   (WiFi.getBand() == WIFI_BAND_5G) ? "5" : "2.4",
                   ip.toString().c_str());
-    s_dns.setErrorReplyCode(DNSReplyCode::NoError);
-    s_dns.start(DNS_PORT, "*", ip);
+    // Resolve only "vord" to our IP; answer everything else NXDOMAIN, fast.
+    // A wildcard hijack ("*") would make phones treat the AP as a captive
+    // portal and pin their internet traffic to it instead of falling back to
+    // mobile data. Fast NXDOMAIN = clean "no internet" verdict on the phone.
+    s_dns.setErrorReplyCode(DNSReplyCode::NonExistentDomain);
+    s_dns.start(DNS_PORT, "vord", ip);
 
     s_server.on("/", handleRoot);
     s_server.on("/api/status", handleApiStatus);

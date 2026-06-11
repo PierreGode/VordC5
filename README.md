@@ -60,8 +60,11 @@ at a reduced duty cycle to leave airtime for the AP — see
 
 1. Connect to the WiFi network **`Vord-C5`** (default password
    **`Vord2026`**).
-2. Most phones pop the captive-portal "sign in" sheet automatically. Otherwise
-   open **http://192.168.4.1/** in a browser (this is the AP gateway address).
+2. Open **http://192.168.4.1/** in a browser (this is the AP gateway address).
+   Your phone will report "no internet" on this network — that is intentional:
+   it makes the phone keep using mobile data for everything else while the
+   dashboard stays reachable over WiFi. If Android asks, choose "stay
+   connected".
 
 By default the AP is hosted on **5 GHz** (`AP_USE_5GHZ`), which avoids 2.4 GHz
 in-band interference with the BLE scan. If a client device is 2.4 GHz-only and

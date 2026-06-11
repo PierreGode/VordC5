@@ -10,7 +10,8 @@
 // ----- WiFi Access Point + web dashboard -----
 // At boot the device brings up its own WiFi network and serves a live
 // dashboard of all observed BLE devices and skimmer detections at
-// http://192.168.4.1/ (also reachable via the captive-portal redirect).
+// http://192.168.4.1/. The AP intentionally reports "no internet" to clients
+// so phones keep using mobile data while connected to it.
 #ifndef AP_SSID
 #define AP_SSID       "Vord-C5"
 #endif

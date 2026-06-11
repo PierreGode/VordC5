@@ -5,9 +5,10 @@
 //
 // At boot the device starts its own WiFi network (AP_SSID/AP_PASSWORD from
 // config.h) and serves a live page listing every BLE device it has seen and
-// which ones matched a skimmer fingerprint. A captive-portal DNS responder
-// redirects all hostnames to the dashboard so connecting clients pop straight
-// into it. BLE scanning continues alongside WiFi via the chip's coexistence.
+// which ones matched a skimmer fingerprint, at http://192.168.4.1/. The AP
+// deliberately fails OS connectivity probes (404 + NXDOMAIN for unknown
+// hosts) so phones classify it as "no internet" and keep using mobile data
+// while connected. BLE scanning continues alongside WiFi via coexistence.
 
 void web_portal_init();   // bring up the AP, DNS and HTTP server (call once in setup)
 void web_portal_loop();   // service DNS + HTTP clients (call frequently from loop)
