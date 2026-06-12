@@ -47,6 +47,14 @@ if [[ -n "${XIAO_SKIMMER_LED_GPIO:-}" ]]; then
   SKIMMER_LED_FLAG=" -DSKIMMER_LED_PIN=${XIAO_SKIMMER_LED_GPIO}"
 fi
 
+# Build identifier (UTC date + git short SHA), matching scripts/version.py and
+# the flasher's docs/version.json, so the XIAO's AP dashboard shows the same
+# build number. Same format as deploy-flasher.yml; "nogit" without a checkout.
+GIT_SHA="$(git rev-parse HEAD 2>/dev/null | cut -c1-7 || true)"
+[[ -z "$GIT_SHA" ]] && GIT_SHA="nogit"
+VORD_BUILD_STR="$(date -u +%-m.%-d).${GIT_SHA}"
+BUILD_FLAG=" -DVORD_BUILD=\\\"${VORD_BUILD_STR}\\\""
+
 echo "==> Assembling Arduino sketch at $SKETCH_DIR from src/"
 rm -rf "$SKETCH_DIR"
 mkdir -p "$SKETCH_DIR/src"
@@ -66,7 +74,7 @@ echo "==> Compiling for $FQBN"
 # left unset: this firmware fits in internal SRAM without PSRAM requirements.
 "$ARDUINO_CLI_BIN" compile \
   --fqbn "$FQBN" \
-  --build-property "compiler.cpp.extra_flags=-DVORD_BOARD_C5=1 -DVORD_BOARD_XIAO_C5=1 -DVORD_HAS_DISPLAY=0 -DVORD_HAS_GPS=0 -DVORD_HAS_SKIMMER_LED=1 -DVORD_HAS_MODE_BUTTON=0 -DCORE_DEBUG_LEVEL=0${SKIMMER_LED_FLAG}" \
+  --build-property "compiler.cpp.extra_flags=-DVORD_BOARD_C5=1 -DVORD_BOARD_XIAO_C5=1 -DVORD_HAS_DISPLAY=0 -DVORD_HAS_GPS=0 -DVORD_HAS_SKIMMER_LED=1 -DVORD_HAS_MODE_BUTTON=0 -DCORE_DEBUG_LEVEL=0${SKIMMER_LED_FLAG}${BUILD_FLAG}" \
   --export-binaries \
   "$SKETCH_DIR"
 

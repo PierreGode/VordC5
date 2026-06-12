@@ -4,6 +4,13 @@
 // ----- Firmware version -----
 #define VORD_FW_VERSION "2.0"
 
+// Build identifier (UTC date + git short SHA), injected at compile time by
+// scripts/version.py so the AP dashboard shows the same string as the flasher
+// site. Falls back to "dev" for builds without git or the pre-build hook.
+#ifndef VORD_BUILD
+#define VORD_BUILD "dev"
+#endif
+
 // ----- Task stack sizes -----
 #define CYCLE_TASK_STACK   8192
 

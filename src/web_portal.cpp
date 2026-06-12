@@ -47,6 +47,7 @@ static void handleApiStatus() {
     json.reserve(256);
     json += "{";
     json += "\"version\":";       appendJsonString(json, VORD_FW_VERSION);
+    json += ",\"build\":";        appendJsonString(json, VORD_BUILD);
     json += ",\"uptimeMs\":";     json += String(millis());
     json += ",\"scanning\":";     json += scan_cycle_is_running() ? "true" : "false";
     json += ",\"liveBle\":";      json += String(ble_scanner_count());
@@ -190,7 +191,7 @@ uptime <b id=up>-</b> &middot; heap <b id=heap>-</b><span id=batw style=display:
 <tbody id=rows></tbody></table>
 </section>
 
-<div class=foot>Vord C5 &middot; live dashboard &middot; refreshes every 2s</div>
+<div class=foot>Vord C5 &middot; build <b id=build>-</b> &middot; refreshes every 2s</div>
 </main>
 <script>
 const $=id=>document.getElementById(id);
@@ -208,6 +209,7 @@ async function tick(){
   $('scan').className='dot '+(st.scanning?'on':'off');
   $('up').textContent=fmtUp(st.uptimeMs);
   $('heap').textContent=Math.round(st.freeHeap/1024)+'KB';
+  $('build').textContent=st.build;
   if(st.vbatMv){$('batw').style.display='';$('bat').textContent=(st.vbatMv/1000).toFixed(2)+'V '+st.batPct+'%';$('bat').style.color=st.batPct<=15?'var(--accent)':''}
   let rows=dv.devices.slice().sort((a,b)=>b.rssi-a.rssi);
   if(skimOnly)rows=rows.filter(d=>d.skimmer||d.pentool);
