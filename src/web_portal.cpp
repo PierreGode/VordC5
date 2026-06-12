@@ -173,12 +173,12 @@ uptime <b id=up>-</b> &middot; heap <b id=heap>-</b><span id=batw style=display:
 </div>
 
 <div class=stats>
-<div class=stat><div class=n id=lBle>-</div><div class=l>Live BLE</div></div>
-<div class="stat skim"><div class=n id=lSkim>-</div><div class=l>Live Skimmers</div></div>
-<div class="stat pent"><div class=n id=lPent>-</div><div class=l>Live Pentools</div></div>
-<div class=stat><div class=n id=sBle>-</div><div class=l>Session BLE (est)</div></div>
-<div class="stat skim"><div class=n id=sSkim>-</div><div class=l>Session Skimmers (est)</div></div>
-<div class="stat pent"><div class=n id=sPent>-</div><div class=l>Session Pentools (est)</div></div>
+<div class=stat><div class=n id=lBle>-</div><div class=l>BLE Views</div></div>
+<div class="stat skim"><div class=n id=lSkim>-</div><div class=l>Skimmer Views</div></div>
+<div class="stat pent"><div class=n id=lPent>-</div><div class=l>Pentool Views</div></div>
+<div class=stat><div class=n id=sBle>-</div><div class=l>BLE Devices</div></div>
+<div class="stat skim"><div class=n id=sSkim>-</div><div class=l>Skimmers</div></div>
+<div class="stat pent"><div class=n id=sPent>-</div><div class=l>Pentools</div></div>
 </div>
 
 <section class=panel>
