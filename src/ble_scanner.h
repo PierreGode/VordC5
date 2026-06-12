@@ -18,6 +18,7 @@ struct BleDeviceRecord {
     String   name;
     int32_t  rssi;        // most recent RSSI
     bool     isSkimmer;   // matched a skimmer fingerprint at any point
+    bool     isPentool;   // matched a pentest-tool fingerprint (Flipper etc.)
     uint32_t firstSeenMs;
     uint32_t lastSeenMs;
     uint32_t seenCount;   // advertisements observed
@@ -34,10 +35,12 @@ void ble_scanner_stop();
 void ble_scanner_refresh();
 int  ble_scanner_count();
 int  ble_scanner_skimmer_count();
+int  ble_scanner_pentool_count();
 
 // Session totals — unique MACs observed since boot. RAM-only, reset on power cycle.
 int  ble_scanner_session_count();
 int  ble_scanner_session_skimmer_count();
+int  ble_scanner_session_pentool_count();
 
 // Snapshot of the detailed device table for the web UI. Returns a copy taken
 // under the internal mutex so callers can iterate without holding the lock.

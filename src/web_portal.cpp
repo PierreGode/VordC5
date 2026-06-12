@@ -50,13 +50,16 @@ static void handleApiStatus() {
     json += ",\"scanning\":";     json += scan_cycle_is_running() ? "true" : "false";
     json += ",\"liveBle\":";      json += String(ble_scanner_count());
     json += ",\"liveSkimmer\":";  json += String(ble_scanner_skimmer_count());
+    json += ",\"livePentool\":";  json += String(ble_scanner_pentool_count());
     json += ",\"sessionBle\":";   json += String(ble_scanner_session_count());
     json += ",\"sessionSkimmer\":"; json += String(ble_scanner_session_skimmer_count());
+    json += ",\"sessionPentool\":"; json += String(ble_scanner_session_pentool_count());
     json += ",\"freeHeap\":";     json += String((uint32_t)ESP.getFreeHeap());
     const int vbatMv = battery_millivolts();
     json += ",\"vbatMv\":";       json += String(vbatMv);
     json += ",\"batPct\":";       json += String(vbatMv ? battery_percent(vbatMv) : 0);
     json += ",\"skimmerNames\":"; appendJsonString(json, getSkimmerNamesCsv());
+    json += ",\"pentoolNames\":"; appendJsonString(json, getPentoolNamesCsv());
     json += "}";
     s_server.send(200, "application/json", json);
 }
@@ -78,6 +81,7 @@ static void handleApiDevices() {
         json += ",\"name\":";  appendJsonString(json, d.name);
         json += ",\"rssi\":";  json += String(d.rssi);
         json += ",\"skimmer\":"; json += d.isSkimmer ? "true" : "false";
+        json += ",\"pentool\":"; json += d.isPentool ? "true" : "false";
         json += ",\"seen\":";  json += String(d.seenCount);
         json += ",\"firstMs\":"; json += String(d.firstSeenMs);
         json += ",\"lastMs\":";  json += String(d.lastSeenMs);
@@ -111,11 +115,12 @@ h1{margin:10px 0 0;font-family:'Sora',system-ui,sans-serif;font-size:clamp(30px,
 .dot:before{content:"";width:9px;height:9px;border-radius:999px;background:#9aa}
 .dot.on:before{background:var(--accent-2);box-shadow:0 0 0 4px rgba(13,163,177,.18)}
 .dot.off:before{background:var(--accent)}
-.stats{margin-top:20px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.stats{margin-top:20px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
 .stat{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:14px 16px;box-shadow:0 12px 30px rgba(20,30,22,.06)}
 .stat .n{font-family:'Sora',system-ui,sans-serif;font-size:28px;font-weight:800;line-height:1}
 .stat .l{color:var(--muted);font-size:12px;letter-spacing:.04em;text-transform:uppercase;margin-top:6px}
 .stat.skim .n{color:var(--accent)}
+.stat.pent .n{color:#7c3aed}
 .panel{margin-top:20px;background:var(--panel);border:1px solid var(--line);border-radius:22px;padding:20px;box-shadow:0 18px 44px rgba(20,30,22,.08)}
 .bar-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:4px}
 .panel h2{margin:0;font-family:'Sora',system-ui,sans-serif;font-size:20px}
@@ -125,6 +130,8 @@ th,td{text-align:left;padding:10px 8px;border-bottom:1px solid var(--line);verti
 th{font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
 tr.skim td{background:rgba(242,95,58,.08)}
 tr.skim td:first-child{box-shadow:inset 3px 0 0 var(--accent)}
+tr.pent td{background:rgba(124,58,237,.07)}
+tr.pent td:first-child{box-shadow:inset 3px 0 0 #7c3aed}
 .mono{font-family:ui-monospace,Consolas,monospace;font-size:13px;color:var(--muted)}
 .mac-sub{display:none;font-size:11px;margin-top:2px}
 td:first-child{word-break:break-word}
@@ -133,6 +140,7 @@ td:first-child{word-break:break-word}
 .bar i{display:block;height:100%;background:linear-gradient(90deg,var(--accent-2),var(--accent))}
 .tag{display:inline-block;padding:3px 9px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:.03em;background:rgba(242,95,58,.14);color:var(--accent)}
 .tag.g{background:rgba(13,163,177,.14);color:var(--accent-2)}
+.tag.p{background:rgba(124,58,237,.14);color:#7c3aed}
 .foot{margin-top:16px;color:var(--muted);font-size:12px;text-align:center}
 @media(max-width:680px){.stats{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:520px){
@@ -165,14 +173,16 @@ uptime <b id=up>-</b> &middot; heap <b id=heap>-</b><span id=batw style=display:
 <div class=stats>
 <div class=stat><div class=n id=lBle>-</div><div class=l>Live BLE</div></div>
 <div class="stat skim"><div class=n id=lSkim>-</div><div class=l>Live Skimmers</div></div>
+<div class="stat pent"><div class=n id=lPent>-</div><div class=l>Live Pentools</div></div>
 <div class=stat><div class=n id=sBle>-</div><div class=l>Session BLE (est)</div></div>
 <div class="stat skim"><div class=n id=sSkim>-</div><div class=l>Session Skimmers (est)</div></div>
+<div class="stat pent"><div class=n id=sPent>-</div><div class=l>Session Pentools (est)</div></div>
 </div>
 
 <section class=panel>
 <div class=bar-head>
 <h2>Devices <span class=dim id=count></span></h2>
-<label class=toggle><input type=checkbox id=skimOnly> Skimmers only</label>
+<label class=toggle><input type=checkbox id=skimOnly> Flagged only</label>
 </div>
 <table><thead><tr><th>Name</th><th>MAC</th><th>RSSI</th><th>Type</th></tr></thead>
 <tbody id=rows></tbody></table>
@@ -190,16 +200,16 @@ async function tick(){
  try{
   const st=await fetch('/api/status').then(r=>r.json());
   const dv=await fetch('/api/devices').then(r=>r.json());
-  $('lBle').textContent=st.liveBle;$('lSkim').textContent=st.liveSkimmer;
-  $('sBle').textContent=st.sessionBle;$('sSkim').textContent=st.sessionSkimmer;
+  $('lBle').textContent=st.liveBle;$('lSkim').textContent=st.liveSkimmer;$('lPent').textContent=st.livePentool;
+  $('sBle').textContent=st.sessionBle;$('sSkim').textContent=st.sessionSkimmer;$('sPent').textContent=st.sessionPentool;
   $('scan').textContent=st.scanning?'Scanning':'Paused';
   $('scan').className='dot '+(st.scanning?'on':'off');
   $('up').textContent=fmtUp(st.uptimeMs);
   $('heap').textContent=Math.round(st.freeHeap/1024)+'KB';
   if(st.vbatMv){$('batw').style.display='';$('bat').textContent=(st.vbatMv/1000).toFixed(2)+'V '+st.batPct+'%';$('bat').style.color=st.batPct<=15?'var(--accent)':''}
   let rows=dv.devices.slice().sort((a,b)=>b.rssi-a.rssi);
-  if(skimOnly)rows=rows.filter(d=>d.skimmer);
-  $('rows').innerHTML=rows.map(d=>{var p=rssiPct(d.rssi);return '<tr class="'+(d.skimmer?'skim':'')+'"><td>'+(esc(d.name)||'<span class=dim>(unnamed)</span>')+'<div class="mac-sub mono">'+esc(d.mac)+'</div></td><td class=mono>'+esc(d.mac)+'</td><td><span class=bar><i style="width:'+p+'%"></i></span><span class=dim>'+d.rssi+'</span></td><td>'+(d.skimmer?'<span class=tag>SKIMMER</span>':'<span class="tag g">BLE</span>')+'</td></tr>'}).join('')||'<tr><td colspan=4 class=dim>No devices yet&hellip;</td></tr>';
+  if(skimOnly)rows=rows.filter(d=>d.skimmer||d.pentool);
+  $('rows').innerHTML=rows.map(d=>{var p=rssiPct(d.rssi);return '<tr class="'+(d.skimmer?'skim':d.pentool?'pent':'')+'"><td>'+(esc(d.name)||'<span class=dim>(unnamed)</span>')+'<div class="mac-sub mono">'+esc(d.mac)+'</div></td><td class=mono>'+esc(d.mac)+'</td><td><span class=bar><i style="width:'+p+'%"></i></span><span class=dim>'+d.rssi+'</span></td><td>'+(d.skimmer?'<span class=tag>SKIMMER</span>':d.pentool?'<span class="tag p">PENTOOL</span>':'<span class="tag g">BLE</span>')+'</td></tr>'}).join('')||'<tr><td colspan=4 class=dim>No devices yet&hellip;</td></tr>';
   $('count').textContent='('+rows.length+')';
  }catch(e){console.error(e)}
 }
@@ -280,7 +290,9 @@ void web_portal_init() {
 
     // Run web server in its own task to avoid starvation by BLE scan on single-core C5.
     // 8 KB stack: WebServer request parsing + lwIP send path overflow a 4 KB stack.
-    xTaskCreatePinnedToCore(web_portal_task, "web_portal", 8192, NULL, 1, NULL, 0);
+    // Priority 2: above the display/LED/scan tasks so a busy alert flash can't
+    // starve HTTP/DNS; the 2 ms sleep per loop keeps it from hogging in return.
+    xTaskCreatePinnedToCore(web_portal_task, "web_portal", 8192, NULL, 2, NULL, 0);
 }
 
 void web_portal_loop() {

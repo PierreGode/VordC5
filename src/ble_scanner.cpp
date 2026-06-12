@@ -13,6 +13,7 @@
 static BleMode s_mode = BLE_MODE_OFF;
 static int s_bleCount = 0;
 static int s_skimmerCount = 0;
+static int s_pentoolCount = 0;
 static BLEScan* s_pScan = nullptr;
 
 // ---- Session unique-device counters (constant memory) ----
@@ -67,6 +68,7 @@ private:
 static SemaphoreHandle_t s_sessionMutex = nullptr;
 static HyperLogLog s_hllBle;
 static HyperLogLog s_hllSkimmer;
+static HyperLogLog s_hllPentool;
 
 // ---- Detailed device table for the web dashboard ----
 // Keyed by MAC, capped to bound memory. Guarded by s_sessionMutex (same lock as
@@ -79,12 +81,16 @@ class ScanCallbacks : public BLEAdvertisedDeviceCallbacks {
         String mac   = String(advertisedDevice.getAddress().toString().c_str());
         String name  = String(advertisedDevice.getName().c_str());
         int rssi     = advertisedDevice.getRSSI();
-        bool skimmer = isSkimmerName(name);
+        // Pentest tools (Flipper Zero & friends) are classified first so a name
+        // matching both lists shows as PENTOOL, not SKIMMER.
+        bool pentool = isPentoolName(name);
+        bool skimmer = !pentool && isSkimmerName(name);
 
         // Session totals + detailed device table — all under one lock.
         if (s_sessionMutex && xSemaphoreTake(s_sessionMutex, portMAX_DELAY) == pdTRUE) {
             s_hllBle.add(mac.c_str());
             if (skimmer) s_hllSkimmer.add(mac.c_str());
+            if (pentool) s_hllPentool.add(mac.c_str());
 
             const uint32_t now = millis();
             auto it = s_devices.find(mac);
@@ -95,6 +101,7 @@ class ScanCallbacks : public BLEAdvertisedDeviceCallbacks {
                 r.seenCount++;
                 if (name.length()) r.name = name;     // keep the best name we've seen
                 if (skimmer) r.isSkimmer = true;       // sticky once flagged
+                if (pentool) r.isPentool = true;       // sticky once flagged
             } else {
                 // New device. When the table is full, evict the least-recently
                 // seen entry instead of dropping the newcomer, so the dashboard
@@ -112,6 +119,7 @@ class ScanCallbacks : public BLEAdvertisedDeviceCallbacks {
                 r.name = name;
                 r.rssi = rssi;
                 r.isSkimmer = skimmer;
+                r.isPentool = pentool;
                 r.firstSeenMs = now;
                 r.lastSeenMs = now;
                 r.seenCount = 1;
@@ -121,11 +129,15 @@ class ScanCallbacks : public BLEAdvertisedDeviceCallbacks {
         }
         s_bleCount++;
 
-        if (s_mode != BLE_MODE_SKIMMER || !skimmer) return;
+        if (s_mode != BLE_MODE_SKIMMER || !(skimmer || pentool)) return;
 
-        s_skimmerCount++;
-        skimmer_led_notify(rssi, SKIMMER_LED_SKIMMER);
-        skimmer_display_notify(rssi, SKIMMER_LED_SKIMMER);
+        // Both categories trigger the proximity alert (LED + display border) —
+        // a Flipper nearby is still alert-worthy, it just isn't a skimmer.
+        if (skimmer) s_skimmerCount++;
+        if (pentool) s_pentoolCount++;
+        const SkimmerLedAlert type = skimmer ? SKIMMER_LED_SKIMMER : SKIMMER_LED_PENTOOL;
+        skimmer_led_notify(rssi, type);
+        skimmer_display_notify(rssi, type);
     }
 };
 
@@ -150,6 +162,7 @@ void ble_scanner_start(BleMode mode) {
     s_mode = (mode == BLE_MODE_OFF) ? BLE_MODE_OFF : BLE_MODE_SKIMMER;
     s_bleCount = 0;
     s_skimmerCount = 0;
+    s_pentoolCount = 0;
     s_pScan->clearResults();
     // Non-blocking: pass a no-op callback so start() returns immediately.
     // Duration 0 = indefinite; scan_cycle stops it explicitly via ble_scanner_stop().
@@ -186,6 +199,10 @@ int ble_scanner_skimmer_count() {
     return s_skimmerCount;
 }
 
+int ble_scanner_pentool_count() {
+    return s_pentoolCount;
+}
+
 // Snapshot the estimator under the lock (a cheap ~1 KB copy), then compute the
 // cardinality estimate outside the lock so the BLE callback isn't blocked while
 // we iterate the registers.
@@ -201,6 +218,7 @@ static uint32_t hllCount(const HyperLogLog& hll) {
 
 int ble_scanner_session_count()         { return (int)hllCount(s_hllBle); }
 int ble_scanner_session_skimmer_count() { return (int)hllCount(s_hllSkimmer); }
+int ble_scanner_session_pentool_count() { return (int)hllCount(s_hllPentool); }
 
 std::vector<BleDeviceRecord> ble_scanner_snapshot() {
     std::vector<BleDeviceRecord> out;

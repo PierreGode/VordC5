@@ -22,6 +22,7 @@
 // the same whether or not the feature is enabled.
 enum SkimmerLedAlert {
     SKIMMER_LED_SKIMMER = 0,
+    SKIMMER_LED_PENTOOL = 1,   // pentest gadget (Flipper Zero etc.), not a skimmer
 };
 
 #if VORD_HAS_SKIMMER_LED

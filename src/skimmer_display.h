@@ -5,13 +5,14 @@
 #include "config.h"
 #include "skimmer_led.h"   // for the SkimmerLedAlert enum (defined unconditionally)
 
-// Optional full-screen proximity alert on the LilyGO T-Dongle-C5's ST7735
-// 80x160 display (enabled with -DVORD_HAS_DISPLAY=1). It mirrors the proximity
-// LED behaviour but on the screen: while a flagged device is in range the whole
-// screen flashes RED, and the flash rate tracks distance — a stronger RSSI
-// (closer source) flashes faster, a weaker one (farther) flashes slowly. When
-// nothing has been seen for DISPLAY_HOLD_MS the screen returns to a calm dim
-// "scanning / all clear" colour. Same notify-driven model as skimmer_led.
+// Optional status + proximity alert screen on the LilyGO T-Dongle-C5's ST7735
+// 80x160 display (enabled with -DVORD_HAS_DISPLAY=1). The screen is white with
+// the session counts ("BLE n" / "SKIM n") centred on it. While a flagged
+// device is in range a red border (3 px solid + 2 px fading inward) blinks
+// around the edge, and the blink rate tracks distance — a stronger RSSI
+// (closer source) blinks faster, a weaker one (farther) blinks slowly. When
+// nothing has been seen for DISPLAY_HOLD_MS the border disappears and the
+// counts remain. Same notify-driven model as skimmer_led.
 
 #if VORD_HAS_DISPLAY
 

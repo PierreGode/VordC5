@@ -128,9 +128,21 @@ static const char* SKIMMER_NAMES_DEFAULT[] = {
     "LINVOR",
     "MLT-BT05",
 
-    // Flipper Zero BLE attack modes
+    nullptr
+};
+
+// ----- Pentest-tool names (defaults; runtime list lives in runtime_config) -----
+// Recognized separately from skimmers: these are research/attack gadgets, not
+// card-skimmer modules, so the dashboard tags them PENTOOL instead of SKIMMER
+// (they still trigger the proximity alert). Matching is the same normalized
+// substring match as the skimmer list, so "MNTM" catches "MNTM-FW" and
+// "Flipper" catches "xFlipper".
+static const char* PENTOOL_NAMES_DEFAULT[] = {
+    "Flipper",    // Flipper Zero ("Flipper ...", "xFlipper ...")
     "BadKB",      // Flipper HID keyboard spoofing
-    "Flipper",    // Catches "xFlipper" and variations via substring match
+    "BadUSB",
+    "MNTM",       // Momentum firmware ("MNTM-FW")
+    "Momentum",
 
     nullptr
 };
@@ -231,10 +243,11 @@ static const char* SKIMMER_NAMES_DEFAULT[] = {
 #endif
 
 // ----- T-Dongle-C5 ST7735 alert display (enabled by -DVORD_HAS_DISPLAY=1) -----
-// The LilyGO T-Dongle-C5 carries a 0.96" ST7735 80x160 SPI panel. When a flagged
-// device is in range the whole screen flashes RED, and the flash rate tracks
-// distance: a stronger RSSI (closer source) flashes faster, a weaker one (farther)
-// flashes slowly. Idle shows a calm dim-green "scanning" screen.
+// The LilyGO T-Dongle-C5 carries a 0.96" ST7735 80x160 SPI panel. The screen is
+// white with the session BLE / skimmer counts centred on it. When a flagged
+// device is in range a red border (3 px solid + 2 px fading) blinks around the
+// edge, and the blink rate tracks distance: a stronger RSSI (closer source)
+// blinks faster, a weaker one (farther) blinks slowly.
 //
 // Pins are the T-Dongle-C5 board wiring (see its readme pinout). NOTE: LCD_SCK is
 // GPIO6 — the same pin the other C5 boards use for the battery ADC divider — so

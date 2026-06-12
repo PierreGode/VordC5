@@ -1,5 +1,6 @@
-// ST7735 driver implementation — copied verbatim from the T-Dongle-C5 vendor
-// example (lib/lcd_st7735/st7735.cpp). See st7735.h for the rationale.
+// ST7735 driver implementation — based on the T-Dongle-C5 vendor example
+// (lib/lcd_st7735/st7735.cpp); fillScreen rewritten for bulk transfers. See
+// st7735.h for the rationale.
 #include "st7735.h"
 
 Adafruit_ST7735::Adafruit_ST7735(int8_t cs, int8_t dc, int8_t rst, int8_t sck, int8_t mosi)
@@ -88,16 +89,38 @@ void Adafruit_ST7735::drawPixel(int16_t x, int16_t y, uint16_t color)
     digitalWrite(_cs, HIGH);
 }
 
-void Adafruit_ST7735::fillScreen(uint16_t color)
+void Adafruit_ST7735::fillRect(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t color)
 {
-    setAddrWindow(0, 0, _width - 1, _height - 1);
+    if (x < 0) { w += x; x = 0; }
+    if (y < 0) { h += y; y = 0; }
+    if (x + w > (int16_t)_width)  w = (int16_t)_width - x;
+    if (y + h > (int16_t)_height) h = (int16_t)_height - y;
+    if (w <= 0 || h <= 0) return;
+
+    setAddrWindow(x, y, x + w - 1, y + h - 1);
+
+    // Push whole scanlines in bulk inside a 40 MHz transaction (the same
+    // settings startWrite uses). A per-pixel SPI.transfer16 loop outside any
+    // transaction — i.e. at the bus's idle clock — burns ~200 ms of CPU per
+    // full-screen fill, which on the single-core C5 starves the WiFi AP and
+    // web portal for the whole time the alert is being drawn.
+    uint16_t line[160];
+    const uint16_t be = (uint16_t)((color << 8) | (color >> 8)); // panel wants MSB first
+    for (int16_t i = 0; i < w; i++)
+        line[i] = be;
+
+    SPI.beginTransaction(SPISettings(40000000, MSBFIRST, SPI_MODE0));
     digitalWrite(_dc, HIGH);
     digitalWrite(_cs, LOW);
-    for (uint32_t i = 0; i < (uint32_t)_width * _height; i++)
-    {
-        SPI.transfer16(color);
-    }
+    for (int16_t row = 0; row < h; row++)
+        SPI.transferBytes((uint8_t *)line, nullptr, (uint32_t)w * 2);
     digitalWrite(_cs, HIGH);
+    SPI.endTransaction();
+}
+
+void Adafruit_ST7735::fillScreen(uint16_t color)
+{
+    fillRect(0, 0, _width, _height, color);
 }
 
 void Adafruit_ST7735::sendInitCommands()
