@@ -1,4 +1,7 @@
-# ![Vord C5](docs/img/title-vordc5.svg)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/img/title-vordc5-dark.svg" />
+  <img alt="Vord C5" src="docs/img/title-vordc5-light.svg" />
+</picture>
 
 Vord C5 is a dedicated BLE skimmer detector firmware for ESP32-C5 hardware. Flash from here [VordC5](https://pierregode.github.io/VordC5/)
 
