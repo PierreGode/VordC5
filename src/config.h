@@ -171,14 +171,7 @@ static const char* SKIMMER_NAMES_DEFAULT[] = {
 #define SKIMMER_LED_RSSI_FAR   -95     // at/below this → slowest blink
 #define SKIMMER_LED_FAST_MS     70     // blink half-period at closest range
 #define SKIMMER_LED_SLOW_MS   1000     // blink half-period at farthest range
-// How long the LED keeps blinking after the last caught advertisement. This is
-// NOT a lingering alarm — it only bridges the natural reception gaps (the BLE
-// scan listens ~30% of the time and restarts every BLE_SCAN_REFRESH_MS), so the
-// LED holds steady while a device is continuously present but dies out almost
-// immediately once you move out of range, like a metal detector. Setting this
-// to 0 would make it flicker off between caught packets even when standing
-// next to a device.
-#define SKIMMER_LED_HOLD_MS   1200
+#define SKIMMER_LED_HOLD_MS  10000     // keep blinking this long after the last sighting
 #define SKIMMER_LED_TASK_STACK 2048
 
 // Proximity COLOR for the non-white blink phase. The white phase always blinks;
