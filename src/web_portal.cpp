@@ -8,6 +8,7 @@
 #include <WiFi.h>
 #include <WebServer.h>
 #include <DNSServer.h>
+#include <esp_netif.h>
 
 static WebServer s_server(80);
 static DNSServer s_dns;
@@ -269,6 +270,22 @@ void web_portal_init() {
     WiFi.setBandMode(WIFI_BAND_MODE_2G_ONLY);
     ok = WiFi.softAP(AP_SSID, pw, AP_CHANNEL);
 #endif
+
+    // Don't advertise a default gateway in DHCP offers. The AP has no upstream,
+    // so a network without a gateway is what we actually are: phones treat it
+    // as local-only from the moment they join — 192.168.4.1 stays reachable
+    // while internet traffic keeps flowing over mobile data. Relying only on
+    // failed connectivity probes for that verdict breaks when the client has a
+    // static IP/DNS configured (probes time out slowly instead of failing
+    // fast, and the phone routes internet into us meanwhile).
+    if (esp_netif_t* apNetif = esp_netif_get_handle_from_ifkey("WIFI_AP_DEF")) {
+        uint8_t offerGw = 0;   // dhcps_offer_t: 0 = omit the router (option 3)
+        esp_netif_dhcps_stop(apNetif);
+        esp_netif_dhcps_option(apNetif, ESP_NETIF_OP_SET,
+                               ESP_NETIF_ROUTER_SOLICITATION_ADDRESS,
+                               &offerGw, sizeof(offerGw));
+        esp_netif_dhcps_start(apNetif);
+    }
 
     const IPAddress ip = WiFi.softAPIP();
     Serial.printf("[web] AP '%s' %s  band=%sGHz  ip=http://%s/\n",
