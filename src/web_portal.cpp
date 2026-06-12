@@ -118,7 +118,7 @@ h1{margin:10px 0 0;font-family:'Sora',system-ui,sans-serif;font-size:clamp(30px,
 .dot:before{content:"";width:9px;height:9px;border-radius:999px;background:#9aa}
 .dot.on:before{background:var(--accent-2);box-shadow:0 0 0 4px rgba(13,163,177,.18)}
 .dot.off:before{background:var(--accent)}
-.stats{margin-top:20px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.stats{margin-top:20px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 .stat{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:14px 16px;box-shadow:0 12px 30px rgba(20,30,22,.06)}
 .stat .n{font-family:'Sora',system-ui,sans-serif;font-size:28px;font-weight:800;line-height:1}
 .stat .l{color:var(--muted);font-size:12px;letter-spacing:.04em;text-transform:uppercase;margin-top:6px}
@@ -145,7 +145,6 @@ td:first-child{word-break:break-word}
 .tag.g{background:rgba(13,163,177,.14);color:var(--accent-2)}
 .tag.p{background:rgba(124,58,237,.14);color:#7c3aed}
 .foot{margin-top:16px;color:var(--muted);font-size:12px;text-align:center}
-@media(max-width:680px){.stats{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:520px){
 .wrap{width:100%;padding:16px 12px 32px}
 .meta{text-align:left;padding-top:0}
@@ -174,11 +173,11 @@ uptime <b id=up>-</b> &middot; heap <b id=heap>-</b><span id=batw style=display:
 </div>
 
 <div class=stats>
-<div class=stat><div class=n id=lBle>-</div><div class=l>BLE Views</div></div>
 <div class="stat skim"><div class=n id=lSkim>-</div><div class=l>Skimmer Views</div></div>
-<div class="stat pent"><div class=n id=lPent>-</div><div class=l>Pentool Views</div></div>
-<div class=stat><div class=n id=sBle>-</div><div class=l>BLE Devices</div></div>
 <div class="stat skim"><div class=n id=sSkim>-</div><div class=l>Skimmers</div></div>
+<div class=stat><div class=n id=lBle>-</div><div class=l>BLE Views</div></div>
+<div class=stat><div class=n id=sBle>-</div><div class=l>BLE Devices</div></div>
+<div class="stat pent"><div class=n id=lPent>-</div><div class=l>Pentool Views</div></div>
 <div class="stat pent"><div class=n id=sPent>-</div><div class=l>Pentools</div></div>
 </div>
 
