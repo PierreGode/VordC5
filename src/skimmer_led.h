@@ -14,8 +14,12 @@
 // is in range and blinks faster the closer it is (stronger RSSI → shorter
 // half-period). It alternates white with a distance-coded color so range is
 // readable at a glance: far → blue, then yellow → orange → red as you close in
-// (thresholds in config.h: SKIMMER_LED_RSSI_YELLOW / _RED). The LED turns itself
-// off once nothing has been seen for SKIMMER_LED_HOLD_MS.
+// (thresholds in config.h: SKIMMER_LED_RSSI_YELLOW / _RED). Blink rate and
+// color track a fast-smoothed RSSI continuously (metal-detector style): a
+// fresh report retunes the blink immediately, mid-phase, instead of waiting
+// for the current blink to finish. The LED turns itself off once nothing has
+// been seen for SKIMMER_LED_HOLD_MS (a short gap-bridging hold, not an alarm
+// latch).
 
 // Alert type carried into the LED. Defined unconditionally so callers compile
 // the same whether or not the feature is enabled.

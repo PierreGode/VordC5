@@ -77,8 +77,17 @@ static void ledPhase(bool whitePhase, int rssi) {
     }
 }
 
+// Metal-detector display loop. Runs on a fast fixed tick (10 ms) instead of
+// sleeping out whole blink phases, so a fresh RSSI report retimes/recolors the
+// blink *immediately* — even mid-phase — rather than after the current (up to
+// 1 s) phase expires. The displayed RSSI is a fast exponential average of the
+// per-packet reports: quick enough to feel instant (~90% of a step in ~0.3 s),
+// heavy enough to filter the ±10 dB single-packet jitter into a steady sweep.
 static void skimmer_led_task(void*) {
-    bool whitePhase = false;
+    bool     active       = false;
+    bool     whitePhase   = false;
+    float    dispRssi     = SKIMMER_LED_RSSI_FAR;
+    uint32_t phaseStartMs = 0;
     ledOff();
 
     for (;;) {
@@ -93,6 +102,7 @@ static void skimmer_led_task(void*) {
                 ledWrite(0, 0, 0);
                 vTaskDelay(pdMS_TO_TICKS(150));
             }
+            active = false;
             whitePhase = false;
             continue;
         }
@@ -101,16 +111,34 @@ static void skimmer_led_task(void*) {
         const uint32_t age = now - (uint32_t)s_lastSeenMs;
 
         if (s_lastSeenMs != 0 && age <= SKIMMER_LED_HOLD_MS) {
-            // A flagged device is (recently) in range — alternate the two
-            // colors at the proximity rate.
-            whitePhase = !whitePhase;
-            ledPhase(whitePhase, (int)s_lastRssi);
-            vTaskDelay(pdMS_TO_TICKS(rssiToHalfPeriod((int)s_lastRssi)));
+            if (!active) {
+                // First sighting after silence: respond instantly at the
+                // reported strength, starting on the visible white phase.
+                active       = true;
+                dispRssi     = (float)s_lastRssi;
+                whitePhase   = true;
+                phaseStartMs = now;
+            } else {
+                // Track the newest report. 0.08/tick at 10 ms ticks ≈ 120 ms
+                // time constant.
+                dispRssi += ((float)s_lastRssi - dispRssi) * 0.08f;
+            }
+
+            const int rssi = (int)lroundf(dispRssi);
+            if (now - phaseStartMs >= rssiToHalfPeriod(rssi)) {
+                whitePhase   = !whitePhase;
+                phaseStartMs = now;
+            }
+            // Rewrite every tick: the proximity color keeps sweeping with
+            // distance even within a single blink phase.
+            ledPhase(whitePhase, rssi);
+            vTaskDelay(pdMS_TO_TICKS(10));
         } else {
             // Nothing nearby — make sure the LED is off and idle-poll.
             ledOff();
+            active = false;
             whitePhase = false;
-            vTaskDelay(pdMS_TO_TICKS(100));
+            vTaskDelay(pdMS_TO_TICKS(50));
         }
     }
 }
