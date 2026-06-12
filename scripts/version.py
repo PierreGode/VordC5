@@ -34,10 +34,6 @@ _build = "{}.{}.{}".format(_now.month, _now.day, _git_sha7())
 
 print("VORD_BUILD = " + _build)
 
-# StringifyMacro quotes/escapes correctly per host platform (Windows + Linux CI);
-# fall back to manual escaping on older PlatformIO that lacks the helper.
-try:
-    _macro = env.StringifyMacro(_build)   # noqa: F821
-except AttributeError:
-    _macro = '\\"%s\\"' % _build
-env.Append(CPPDEFINES=[("VORD_BUILD", _macro)])  # noqa: F821
+# Pass the build id as a RAW, unquoted token (-DVORD_BUILD=6.12.823127a); config.h
+# stringizes it. Avoids quote-escaping differences between SCons and arduino-cli.
+env.Append(CPPDEFINES=[("VORD_BUILD", _build)])  # noqa: F821

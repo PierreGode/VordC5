@@ -53,7 +53,8 @@ fi
 GIT_SHA="$(git rev-parse HEAD 2>/dev/null | cut -c1-7 || true)"
 [[ -z "$GIT_SHA" ]] && GIT_SHA="nogit"
 VORD_BUILD_STR="$(date -u +%-m.%-d).${GIT_SHA}"
-BUILD_FLAG=" -DVORD_BUILD=\\\"${VORD_BUILD_STR}\\\""
+# Raw, unquoted token — config.h stringizes it (no shell/arduino-cli escaping).
+BUILD_FLAG=" -DVORD_BUILD=${VORD_BUILD_STR}"
 
 echo "==> Assembling Arduino sketch at $SKETCH_DIR from src/"
 rm -rf "$SKETCH_DIR"

@@ -47,7 +47,7 @@ static void handleApiStatus() {
     json.reserve(256);
     json += "{";
     json += "\"version\":";       appendJsonString(json, VORD_FW_VERSION);
-    json += ",\"build\":";        appendJsonString(json, VORD_BUILD);
+    json += ",\"build\":";        appendJsonString(json, VORD_BUILD_ID);
     json += ",\"uptimeMs\":";     json += String(millis());
     json += ",\"scanning\":";     json += scan_cycle_is_running() ? "true" : "false";
     json += ",\"liveBle\":";      json += String(ble_scanner_count());

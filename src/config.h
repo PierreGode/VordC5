@@ -4,12 +4,18 @@
 // ----- Firmware version -----
 #define VORD_FW_VERSION "2.0"
 
-// Build identifier (UTC date + git short SHA), injected at compile time by
-// scripts/version.py so the AP dashboard shows the same string as the flasher
-// site. Falls back to "dev" for builds without git or the pre-build hook.
+// Build identifier (UTC date + git short SHA) injected at compile time as a
+// RAW, unquoted token by scripts/version.py / scripts/build-xiao.sh, then
+// stringized below. Passing it unquoted sidesteps cross-toolchain quote
+// escaping (PlatformIO/SCons vs arduino-cli --build-property): the date+sha is
+// always a single valid preprocessing-number token, e.g. 6.12.823127a. Use
+// VORD_BUILD_ID (the string) in code; falls back to "dev" when no hook ran.
 #ifndef VORD_BUILD
-#define VORD_BUILD "dev"
+#define VORD_BUILD dev
 #endif
+#define VORD_STRINGIFY2(x) #x
+#define VORD_STRINGIFY(x)  VORD_STRINGIFY2(x)
+#define VORD_BUILD_ID      VORD_STRINGIFY(VORD_BUILD)
 
 // ----- Task stack sizes -----
 #define CYCLE_TASK_STACK   8192
