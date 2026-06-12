@@ -15,8 +15,9 @@ The firmware now runs continuous BLE scanning all the time and focuses only on s
 - A WiFi Access Point + web dashboard start at boot (see below).
 - Detection is local on the device, no host protocol required.
 - An addressable RGB LED (WS2812B/SK6812) is used as proximity feedback:
-- Red/white blink pattern means skimmer signature detected.
-- Faster blinking means stronger RSSI (closer source).
+- Steady white means a skimmer signature is detected (LED never dark while in range).
+- Short color pulses on top of the white code the distance: blue (far) → yellow → orange → red (close).
+- Faster pulsing means stronger RSSI (closer source).
 - No wardrive mode.
 - No serial command parser loop.
 

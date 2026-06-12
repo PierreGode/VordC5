@@ -17,9 +17,9 @@ static bool s_started = false;
 static volatile uint8_t  s_flashR = 0, s_flashG = 0, s_flashB = 0;
 static volatile int32_t  s_flashPending = 0;
 
-// Map an RSSI to a blink half-period (ms): closer (stronger signal, i.e. RSSI
-// nearer 0) blinks faster. RSSI is clamped to the configured NEAR..FAR window,
-// then linearly interpolated across FAST..SLOW.
+// Map an RSSI to the white gap between color pulses (ms): closer (stronger
+// signal, i.e. RSSI nearer 0) pulses faster. RSSI is clamped to the configured
+// NEAR..FAR window, then linearly interpolated across FAST..SLOW.
 static uint32_t rssiToHalfPeriod(int rssi) {
     if (rssi > SKIMMER_LED_RSSI_NEAR) rssi = SKIMMER_LED_RSSI_NEAR;
     if (rssi < SKIMMER_LED_RSSI_FAR)  rssi = SKIMMER_LED_RSSI_FAR;
@@ -64,8 +64,8 @@ static void proximityColor(int rssi, uint8_t& r, uint8_t& g, uint8_t& b) {
     r = B; g = (uint8_t)green; b = 0;
 }
 
-// Show one phase of the alternating blink: white on the white phase, otherwise
-// the distance-coded proximity color (blue → yellow → orange → red).
+// Show one phase of the detection pattern: steady white on the white phase,
+// otherwise the distance-coded proximity color (blue → yellow → orange → red).
 static void ledPhase(bool whitePhase, int rssi) {
     if (whitePhase) {
         const uint8_t b = SKIMMER_LED_BRIGHTNESS;
@@ -101,11 +101,16 @@ static void skimmer_led_task(void*) {
         const uint32_t age = now - (uint32_t)s_lastSeenMs;
 
         if (s_lastSeenMs != 0 && age <= SKIMMER_LED_HOLD_MS) {
-            // A flagged device is (recently) in range — alternate the two
-            // colors at the proximity rate.
+            // A flagged device is (recently) in range. The LED stays lit the
+            // whole time: steady white, interrupted by short color pulses.
+            // The white gap between pulses shrinks as the device gets closer
+            // (and the pulse color sweeps blue → red), so up close it flashes
+            // color rapidly while far away it's white with occasional ticks.
             whitePhase = !whitePhase;
             ledPhase(whitePhase, (int)s_lastRssi);
-            vTaskDelay(pdMS_TO_TICKS(rssiToHalfPeriod((int)s_lastRssi)));
+            vTaskDelay(pdMS_TO_TICKS(whitePhase
+                ? rssiToHalfPeriod((int)s_lastRssi)   // white: distance-based gap
+                : SKIMMER_LED_PULSE_MS));             // color: short fixed pulse
         } else {
             // Nothing nearby — make sure the LED is off and idle-poll.
             ledOff();

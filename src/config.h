@@ -166,11 +166,15 @@ static const char* SKIMMER_NAMES_DEFAULT[] = {
 #ifndef SKIMMER_LED_BRIGHTNESS
 #define SKIMMER_LED_BRIGHTNESS 40      // 0-255 white level when lit (these LEDs are bright)
 #endif
+// While a flagged device is in range the LED is steady white and fires short
+// color pulses on top (never dark): the white gap between pulses shrinks as
+// the device gets closer, and the pulse color sweeps blue → red (see below).
 // RSSI is negative; closer ≈ nearer 0 (e.g. -45), farther ≈ more negative (-95).
-#define SKIMMER_LED_RSSI_NEAR  -45     // at/above this → fastest blink
-#define SKIMMER_LED_RSSI_FAR   -95     // at/below this → slowest blink
-#define SKIMMER_LED_FAST_MS     70     // blink half-period at closest range
-#define SKIMMER_LED_SLOW_MS   1000     // blink half-period at farthest range
+#define SKIMMER_LED_RSSI_NEAR  -45     // at/above this → fastest pulsing
+#define SKIMMER_LED_RSSI_FAR   -95     // at/below this → slowest pulsing
+#define SKIMMER_LED_FAST_MS     70     // white gap between color pulses, closest range
+#define SKIMMER_LED_SLOW_MS   1000     // white gap between color pulses, farthest range
+#define SKIMMER_LED_PULSE_MS   150     // duration of each color pulse
 #define SKIMMER_LED_HOLD_MS  10000     // keep blinking this long after the last sighting
 #define SKIMMER_LED_TASK_STACK 2048
 
