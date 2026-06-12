@@ -2,6 +2,7 @@
 #include "config.h"
 #include "runtime_config.h"
 #include "skimmer_led.h"
+#include "skimmer_display.h"
 #include <BLEDevice.h>
 #include <BLEScan.h>
 #include <BLEAdvertisedDevice.h>
@@ -124,6 +125,7 @@ class ScanCallbacks : public BLEAdvertisedDeviceCallbacks {
 
         s_skimmerCount++;
         skimmer_led_notify(rssi, SKIMMER_LED_SKIMMER);
+        skimmer_display_notify(rssi, SKIMMER_LED_SKIMMER);
     }
 };
 

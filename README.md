@@ -8,6 +8,9 @@ The firmware now runs continuous BLE scanning all the time and focuses only on s
 
 - ESP32-C5 Dev Board / Waveshare ESP32-C5-WIFI6-KIT (16 MB flash)
 - Seeed XIAO ESP32-C5 (8 MB flash)
+- LilyGO T-Dongle-C5 (16 MB flash, 0.96" ST7735 screen + onboard APA102 LED) —
+  the **screen** flashes red and the **onboard RGB LED** gives proximity feedback,
+  both at once (see below)
 
 ## Runtime behavior
 
@@ -50,6 +53,39 @@ LED.
 
 See the LED notes in [`src/config.h`](src/config.h) for the full pin-resolution
 order and brightness/timing knobs (`SKIMMER_LED_*`).
+
+## T-Dongle-C5 alerts (screen + onboard LED)
+
+The LilyGO T-Dongle-C5 has both a built-in 0.96" ST7735 (80×160) display and an
+onboard RGB LED, and the firmware uses **both** at once:
+
+- **Screen.** When a skimmer-class device is in range the whole screen flashes
+  **RED**, and the flash rate codes the distance — a stronger signal (closer
+  source) flashes faster, a weaker one (farther) flashes slowly. When nothing has
+  been seen for a few seconds the screen returns to a calm dim-green
+  "scanning / all clear" state.
+- **Onboard LED.** The same proximity feedback as the other C5 boards: steady
+  white while a flagged device is in range, with short color pulses on top that
+  sweep blue → yellow → orange → red as you close in and pulse faster the nearer
+  the source.
+
+Nothing to wire — both are on-board. The screen pins, flash-rate window
+(`DISPLAY_RSSI_NEAR`/`_FAR`) and speeds (`DISPLAY_FLASH_FAST_MS`/`_SLOW_MS`) live
+in the `VORD_HAS_DISPLAY` block of [`src/config.h`](src/config.h); the LED knobs
+are the `SKIMMER_LED_*` block. Notes on this board:
+
+- The onboard LED is an **APA102** (2-wire clock+data on GPIO4/5), not a WS2812B,
+  so `skimmer_led` drives it through its APA102 backend (`SKIMMER_LED_APA102=1`)
+  instead of `rgbLedWrite()`. The proximity behaviour is identical; only the wire
+  protocol differs. Brightness is `SKIMMER_LED_APA102_BRIGHTNESS` (0–31).
+- Battery monitoring is disabled because the battery ADC pin (GPIO6) is the
+  display's SPI clock on this board.
+
+Build it with:
+
+```bash
+pio run -e tdongle-c5
+```
 
 ## WiFi dashboard
 
@@ -123,6 +159,12 @@ So `HC-05`, `HC05`, and `hc_05` all match. The JDY prefix rule catches all JDY-x
 pio run -e esp32c5-dev
 ```
 
+### PlatformIO (LilyGO T-Dongle-C5)
+
+```bash
+pio run -e tdongle-c5
+```
+
 ### Arduino CLI (Seeed XIAO ESP32-C5)
 
 ```bash
@@ -131,12 +173,15 @@ bash scripts/build-xiao.sh
 
 ## Web flasher
 
-Web flasher in docs now targets only the two supported C5 profiles:
+The web flasher in docs targets the three supported C5 profiles, each its own
+button:
 
 - ESP32-C5 Dev Board profile
 - Seeed XIAO ESP32-C5 profile
+- LilyGO T-Dongle-C5 profile
 
-The GitHub Actions deploy workflow builds both binaries and publishes the flasher site with C5-only manifests.
+The GitHub Actions deploy workflow builds all three binaries and publishes the
+flasher site with C5-only manifests.
 
 ## Notes
 

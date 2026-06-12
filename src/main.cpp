@@ -15,6 +15,7 @@
 #include "scan_cycle.h"
 #include "runtime_config.h"
 #include "skimmer_led.h"
+#include "skimmer_display.h"
 #include "web_portal.h"
 #include "battery.h"
 
@@ -31,8 +32,9 @@ void setup() {
     // available immediately at boot.
     web_portal_init();
 
-    // Local-only alert path on the device.
+    // Local-only alert paths on the device.
     skimmer_led_init();
+    skimmer_display_init();   // T-Dongle-C5 screen alert (no-op on boards without a display)
     scan_cycle_init();
 
     // Continuous BLE scan task. On C5 this runs on the single available core.

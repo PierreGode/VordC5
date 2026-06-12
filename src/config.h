@@ -188,18 +188,105 @@ static const char* SKIMMER_NAMES_DEFAULT[] = {
 #define SKIMMER_LED_RSSI_RED    -52    // at/above this → solid red (closest, ~1 m)
 #define SKIMMER_LED_RSSI_YELLOW -80    // at this → yellow (~20 m); below → blue (~30 m+)
 
+// LED backend. Most C5 boards use a single-wire WS2812B/SK6812 pixel driven via
+// rgbLedWrite() (RMT). The LilyGO T-Dongle-C5 instead has an APA102 onboard LED
+// (a 2-wire clock+data pixel), which speaks a different protocol — so select the
+// APA102 bit-bang backend on that board. All the proximity behaviour (white
+// phase, blue → red distance sweep, faster pulses up close) is identical; only
+// the wire format differs.
+#ifndef SKIMMER_LED_APA102
+#  if VORD_BOARD_TDONGLE_C5
+#    define SKIMMER_LED_APA102 1
+#  else
+#    define SKIMMER_LED_APA102 0
+#  endif
+#endif
+#if SKIMMER_LED_APA102
+#  ifndef SKIMMER_LED_APA102_DATA_PIN
+#    define SKIMMER_LED_APA102_DATA_PIN 5    // T-Dongle-C5 LED_DI (GPIO5)
+#  endif
+#  ifndef SKIMMER_LED_APA102_CLK_PIN
+#    define SKIMMER_LED_APA102_CLK_PIN  4    // T-Dongle-C5 LED_CI (GPIO4)
+#  endif
+// APA102 has its own 5-bit (0-31) global brightness register on top of the 8-bit
+// RGB channels. Keep it modest so the single onboard pixel isn't blinding.
+#  ifndef SKIMMER_LED_APA102_BRIGHTNESS
+#    define SKIMMER_LED_APA102_BRIGHTNESS 8
+#  endif
+#endif
+
 // Some boards wire the addressable LED with red and green swapped, so a value
 // the firmware sends as "red" lights up green. The ESP32-C5 dev board's onboard
 // RGB LED is one of them, so the swap defaults on there; a user-wired standard
-// WS2812B/SK6812 (e.g. on the XIAO) needs no swap. Override for your hardware:
-// set to 1 if red shows as green, 0 if colors are already correct.
+// WS2812B/SK6812 (e.g. on the XIAO) and the T-Dongle-C5's APA102 need no swap.
+// Override for your hardware: set to 1 if red shows as green, 0 if colors are
+// already correct.
 #ifndef SKIMMER_LED_SWAP_RG
-#  if VORD_BOARD_XIAO_C5
-#    define SKIMMER_LED_SWAP_RG 0    // user-wired standard pixel: no swap
+#  if VORD_BOARD_XIAO_C5 || SKIMMER_LED_APA102
+#    define SKIMMER_LED_SWAP_RG 0    // standard pixel order: no swap
 #  else
 #    define SKIMMER_LED_SWAP_RG 1    // C5 dev board onboard LED: R/G swapped
 #  endif
 #endif
 #endif
+
+// ----- T-Dongle-C5 ST7735 alert display (enabled by -DVORD_HAS_DISPLAY=1) -----
+// The LilyGO T-Dongle-C5 carries a 0.96" ST7735 80x160 SPI panel. When a flagged
+// device is in range the whole screen flashes RED, and the flash rate tracks
+// distance: a stronger RSSI (closer source) flashes faster, a weaker one (farther)
+// flashes slowly. Idle shows a calm dim-green "scanning" screen.
+//
+// Pins are the T-Dongle-C5 board wiring (see its readme pinout). NOTE: LCD_SCK is
+// GPIO6 — the same pin the other C5 boards use for the battery ADC divider — so
+// battery monitoring is disabled on this board (VBAT_ADC_PIN=-1 in platformio.ini).
+#if VORD_HAS_DISPLAY
+#ifndef DISPLAY_PIN_MOSI
+#define DISPLAY_PIN_MOSI 2     // LCD_MOSI
+#endif
+#ifndef DISPLAY_PIN_SCK
+#define DISPLAY_PIN_SCK  6     // LCD_SCK  (shared with battery ADC on other C5 boards)
+#endif
+#ifndef DISPLAY_PIN_CS
+#define DISPLAY_PIN_CS   10    // LCD_CS
+#endif
+#ifndef DISPLAY_PIN_DC
+#define DISPLAY_PIN_DC   3     // LCD_RS (data/command)
+#endif
+#ifndef DISPLAY_PIN_RST
+#define DISPLAY_PIN_RST  1     // LCD_RST
+#endif
+#ifndef DISPLAY_PIN_BL
+#define DISPLAY_PIN_BL   0     // LCD_BL (backlight)
+#endif
+#ifndef DISPLAY_BL_ON_LEVEL
+#define DISPLAY_BL_ON_LEVEL 0  // backlight-on level (matches the vendor LCD example)
+#endif
+#ifndef DISPLAY_ROTATION
+#define DISPLAY_ROTATION 3     // landscape, 160x80 (USB connector to the side)
+#endif
+
+// Flash-rate mapping. RSSI is negative; closer ≈ nearer 0 (e.g. -45), farther ≈
+// more negative (-95). The half-period (one red or one black phase) shrinks from
+// SLOW (far) to FAST (close), so up close the screen strobes red rapidly while
+// far away it blinks slowly. Reused independently of the LED's own thresholds.
+#ifndef DISPLAY_RSSI_NEAR
+#define DISPLAY_RSSI_NEAR  -45   // at/above this → fastest flashing
+#endif
+#ifndef DISPLAY_RSSI_FAR
+#define DISPLAY_RSSI_FAR   -95   // at/below this → slowest flashing
+#endif
+#ifndef DISPLAY_FLASH_FAST_MS
+#define DISPLAY_FLASH_FAST_MS 60    // half-period at closest range
+#endif
+#ifndef DISPLAY_FLASH_SLOW_MS
+#define DISPLAY_FLASH_SLOW_MS 700   // half-period at farthest range
+#endif
+#ifndef DISPLAY_HOLD_MS
+#define DISPLAY_HOLD_MS 10000       // keep flashing this long after the last sighting
+#endif
+#ifndef DISPLAY_TASK_STACK
+#define DISPLAY_TASK_STACK 4096
+#endif
+#endif // VORD_HAS_DISPLAY
 
 #endif // CONFIG_H

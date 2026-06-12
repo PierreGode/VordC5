@@ -1,0 +1,14 @@
+{
+  "name": "Vord C5 (LilyGO T-Dongle-C5)",
+  "version": "2.0",
+  "home_assistant_domain": "vordc5",
+  "new_install_prompt_erase": true,
+  "builds": [
+    {
+      "chipFamily": "ESP32-C5",
+      "parts": [
+        { "path": "firmware/vord-c5-tdongle.bin", "offset": 0 }
+      ]
+    }
+  ]
+}

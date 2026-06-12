@@ -50,6 +50,9 @@ jobs:
       - name: Build firmware (ESP32-C5 Dev)
         run: pio run -e esp32c5-dev
 
+      - name: Build firmware (LilyGO T-Dongle-C5)
+        run: pio run -e tdongle-c5
+
       - name: Install arduino-cli
         run: |
           curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | sh
@@ -86,6 +89,16 @@ jobs:
             0xe000   "$BOOT_APP0" \
             0x10000  "$C5_DIR/firmware.bin"
 
+          TDONGLE_DIR=.pio/build/tdongle-c5
+          python -m esptool --chip esp32c5 merge_bin \
+            --output site/firmware/vord-c5-tdongle.bin \
+            --flash_mode dio --flash_freq 80m --flash_size 16MB \
+            --target-offset 0x0 \
+            0x2000   "$TDONGLE_DIR/bootloader.bin" \
+            0x8000   "$TDONGLE_DIR/partitions.bin" \
+            0xe000   "$BOOT_APP0" \
+            0x10000  "$TDONGLE_DIR/firmware.bin"
+
           XIAO_DIR=build-sketch/VordC5/build/esp32.esp32.XIAO_ESP32C5
           BOOT_APP0_ARD=$(find ~/.arduino15/packages/esp32 -name boot_app0.bin | head -n 1)
           if [ -z "$BOOT_APP0_ARD" ]; then
@@ -103,7 +116,7 @@ jobs:
           VERSION="$(date -u +%-m.%-d).${GITHUB_SHA::7}"
           echo "Version: $VERSION"
 
-          for m in manifest-esp32c5.json manifest-xiao-esp32c5.json manifest.json; do
+          for m in manifest-esp32c5.json manifest-xiao-esp32c5.json manifest-tdongle-c5.json manifest.json; do
             jq --arg v "$VERSION" '.version = $v' "site/$m" > "site/$m.tmp"
             mv "site/$m.tmp" "site/$m"
           done

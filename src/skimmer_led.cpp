@@ -2,6 +2,13 @@
 
 #if VORD_HAS_SKIMMER_LED
 
+#if SKIMMER_LED_APA102
+#include "APA102.h"
+// The onboard APA102 on the T-Dongle-C5 (single pixel on the configured
+// clock/data pins). Pins are compile-time template parameters.
+static APA102<SKIMMER_LED_APA102_DATA_PIN, SKIMMER_LED_APA102_CLK_PIN> s_apa;
+#endif
+
 // Shared between the BLE task (writer, via skimmer_led_notify) and the LED
 // task (reader). All three are 32-bit aligned scalars, so plain volatile
 // access is atomic on the ESP32 — no tearing, no mutex needed. A benign race
@@ -31,12 +38,20 @@ static uint32_t rssiToHalfPeriod(int rssi) {
 }
 
 // Single write path so the optional red/green channel swap (for boards wired
-// that way — see SKIMMER_LED_SWAP_RG) applies to every color we emit.
+// that way — see SKIMMER_LED_SWAP_RG) and the per-board LED backend (WS2812 via
+// rgbLedWrite vs. APA102 bit-bang) apply to every color we emit.
 static inline void ledWrite(uint8_t r, uint8_t g, uint8_t b) {
 #if SKIMMER_LED_SWAP_RG
-    rgbLedWrite(SKIMMER_LED_PIN, g, r, b);
+    const uint8_t outR = g, outG = r;   // R/G swapped on this board
 #else
-    rgbLedWrite(SKIMMER_LED_PIN, r, g, b);
+    const uint8_t outR = r, outG = g;
+#endif
+#if SKIMMER_LED_APA102
+    s_apa.startFrame();
+    s_apa.sendColor(outR, outG, b, SKIMMER_LED_APA102_BRIGHTNESS);
+    s_apa.endFrame(1);
+#else
+    rgbLedWrite(SKIMMER_LED_PIN, outR, outG, b);
 #endif
 }
 
