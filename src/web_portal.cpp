@@ -100,6 +100,7 @@ static const char INDEX_HTML[] PROGMEM = R"HTML(<!DOCTYPE html>
 <meta charset=utf-8>
 <meta name=viewport content="width=device-width,initial-scale=1">
 <title>Vord C5</title>
+<link rel="icon" href='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="7" fill="%23152018"/><text x="16" y="23" font-family="Sora,Segoe UI,system-ui,sans-serif" font-size="22" font-weight="700" text-anchor="middle" fill="%23f25f3a">V</text></svg>'>
 <style>
 :root{--bg:#f6f8f3;--bg-soft:#eaf0de;--ink:#152018;--muted:#4f6252;--accent:#f25f3a;--accent-2:#0da3b1;--panel:#fff;--line:#d8e1d0}
 *{box-sizing:border-box}
