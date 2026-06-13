@@ -159,6 +159,15 @@ td:first-child{word-break:break-word}
 .tag.g{background:rgba(13,163,177,.14);color:var(--accent-2)}
 .tag.p{background:rgba(124,58,237,.14);color:#7c3aed}
 .foot{margin-top:16px;color:var(--muted);font-size:12px;text-align:center}
+/* Full-page detection alert: an edge glow that blinks 5x at 1Hz when a new
+   flagged device appears. Solid color at the very edge, fading in both hue and
+   transparency over 2cm toward the centre. pointer-events:none so it never
+   blocks the table. skim = red->orange, pent = purple->yellow. */
+#alert{position:fixed;inset:0;z-index:50;pointer-events:none;opacity:0}
+#alert.run{animation:alertblink 1s ease-in-out 5}
+@keyframes alertblink{0%,100%{opacity:0}50%{opacity:1}}
+#alert.skim{background:linear-gradient(to right,rgba(229,30,30,.92),rgba(255,150,30,0) 2cm) left/2cm 100% no-repeat,linear-gradient(to left,rgba(229,30,30,.92),rgba(255,150,30,0) 2cm) right/2cm 100% no-repeat,linear-gradient(to bottom,rgba(229,30,30,.92),rgba(255,150,30,0) 2cm) top/100% 2cm no-repeat,linear-gradient(to top,rgba(229,30,30,.92),rgba(255,150,30,0) 2cm) bottom/100% 2cm no-repeat}
+#alert.pent{background:linear-gradient(to right,rgba(150,40,220,.92),rgba(240,220,40,0) 2cm) left/2cm 100% no-repeat,linear-gradient(to left,rgba(150,40,220,.92),rgba(240,220,40,0) 2cm) right/2cm 100% no-repeat,linear-gradient(to bottom,rgba(150,40,220,.92),rgba(240,220,40,0) 2cm) top/100% 2cm no-repeat,linear-gradient(to top,rgba(150,40,220,.92),rgba(240,220,40,0) 2cm) bottom/100% 2cm no-repeat}
 @media(max-width:520px){
 .wrap{width:100%;padding:16px 12px 32px}
 .meta{text-align:left;padding-top:0}
@@ -174,6 +183,7 @@ th:nth-child(2),td:nth-child(2){display:none}
 </style>
 </head>
 <body>
+<div id=alert></div>
 <main class=wrap>
 <div class=head>
 <div>
@@ -213,11 +223,19 @@ function rssiPct(r){r=Math.max(-100,Math.min(-40,r));return Math.round((r+100)/6
 function fmtUp(ms){let s=Math.floor(ms/1000),h=Math.floor(s/3600),m=Math.floor(s%3600/60);s=s%60;return (h?h+'h ':'')+((m||h)?m+'m ':'')+s+'s'}
 function ago(ms){if(ms<0)ms=0;let s=Math.floor(ms/1000);if(s<60)return s+'s ago';let m=Math.floor(s/60);if(m<60)return m+'m ago';let h=Math.floor(m/60);if(h<24)return h+'h ago';return Math.floor(h/24)+'d ago'}
 function cat(d){return d.skimmer?0:d.pentool?1:2}
+// Border-blink alert on first sighting of a flagged MAC. A running blink isn't
+// restarted (so a device staying in range blinks once, not forever), except a
+// skimmer may override an in-progress pentool blink.
+const seenSkim=new Set(),seenPent=new Set();
+function fireAlert(kind){const a=$('alert');if(a.classList.contains('run')&&!(kind=='skim'&&a.classList.contains('pent')))return;a.classList.remove('run','skim','pent');void a.offsetWidth;a.classList.add(kind,'run')}
 let skimOnly=false;
 async function tick(){
  try{
   const st=await fetch('/api/status').then(r=>r.json());
   const dv=await fetch('/api/devices').then(r=>r.json());
+  let nS=false,nP=false;
+  for(const d of dv.devices){if(d.skimmer){if(!seenSkim.has(d.mac)){seenSkim.add(d.mac);nS=true}}else if(d.pentool){if(!seenPent.has(d.mac)){seenPent.add(d.mac);nP=true}}}
+  if(nS)fireAlert('skim');else if(nP)fireAlert('pent');
   $('lBle').textContent=st.liveBle;$('lSkim').textContent=st.liveSkimmer;$('lPent').textContent=st.livePentool;
   $('sBle').textContent=st.sessionBle;$('sSkim').textContent=st.sessionSkimmer;$('sPent').textContent=st.sessionPentool;
   $('scan').textContent=st.scanning?'Scanning':'Paused';
@@ -235,6 +253,7 @@ async function tick(){
  }catch(e){console.error(e)}
 }
 $('skimOnly').addEventListener('change',function(e){skimOnly=e.target.checked;tick()});
+$('alert').addEventListener('animationend',function(){this.classList.remove('run','skim','pent')});
 tick();setInterval(tick,2000);
 </script>
 </body>
