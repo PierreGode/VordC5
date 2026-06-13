@@ -23,12 +23,12 @@ static BLEScan* s_pScan = nullptr;
 // std::set<String> grew ~70 bytes per new MAC and would exhaust the heap, after
 // which NimBLE can no longer allocate advert buffers and the scan dies for good
 // (it never recovers because the set is never freed). HyperLogLog estimates the
-// unique count in a fixed ~1 KB no matter how many devices are seen, trading
-// exactness (~3% standard error) for a hard memory bound.
+// unique count in a fixed ~4 KB no matter how many devices are seen, trading
+// exactness (~1.6% standard error) for a hard memory bound.
 class HyperLogLog {
 public:
-    static constexpr int      P = 10;          // 2^P registers
-    static constexpr uint32_t M = 1u << P;     // 1024 registers, 1 byte each
+    static constexpr int      P = 12;          // 2^P registers
+    static constexpr uint32_t M = 1u << P;     // 4096 registers, 1 byte each
 
     void add(const char* s) {
         const uint64_t h   = hash64(s);
