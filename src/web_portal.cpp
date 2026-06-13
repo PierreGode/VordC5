@@ -200,7 +200,7 @@ uptime <b id=up>-</b> &middot; heap <b id=heap>-</b><span id=batw style=display:
 <h2>Devices <span class=dim id=count></span></h2>
 <label class=toggle><input type=checkbox id=skimOnly> Flagged only</label>
 </div>
-<table><thead><tr><th>Name</th><th>MAC</th><th>RSSI</th><th>Type</th></tr></thead>
+<table><thead><tr><th>Name</th><th>MAC</th><th>RSSI</th><th>Type</th><th>Last seen</th></tr></thead>
 <tbody id=rows></tbody></table>
 </section>
 
@@ -211,6 +211,8 @@ const $=id=>document.getElementById(id);
 function esc(s){return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
 function rssiPct(r){r=Math.max(-100,Math.min(-40,r));return Math.round((r+100)/60*100)}
 function fmtUp(ms){let s=Math.floor(ms/1000),h=Math.floor(s/3600),m=Math.floor(s%3600/60);s=s%60;return (h?h+'h ':'')+((m||h)?m+'m ':'')+s+'s'}
+function ago(ms){if(ms<0)ms=0;let s=Math.floor(ms/1000);if(s<60)return s+'s ago';let m=Math.floor(s/60);if(m<60)return m+'m ago';let h=Math.floor(m/60);if(h<24)return h+'h ago';return Math.floor(h/24)+'d ago'}
+function cat(d){return d.skimmer?0:d.pentool?1:2}
 let skimOnly=false;
 async function tick(){
  try{
@@ -224,9 +226,11 @@ async function tick(){
   $('heap').textContent=Math.round(st.freeHeap/1024)+'KB';
   $('build').textContent=st.build;
   if(st.vbatMv){$('batw').style.display='';$('bat').textContent=(st.vbatMv/1000).toFixed(2)+'V '+st.batPct+'%';$('bat').style.color=st.batPct<=15?'var(--accent)':''}
-  let rows=dv.devices.slice().sort((a,b)=>b.rssi-a.rssi);
+  const now=dv.nowMs;
+  // Skimmers first, pentools next, everything else after; newest-seen on top within each group.
+  let rows=dv.devices.slice().sort((a,b)=>cat(a)-cat(b)||b.lastMs-a.lastMs);
   if(skimOnly)rows=rows.filter(d=>d.skimmer||d.pentool);
-  $('rows').innerHTML=rows.map(d=>{var p=rssiPct(d.rssi);return '<tr class="'+(d.skimmer?'skim':d.pentool?'pent':'')+'"><td>'+(esc(d.name)||'<span class=dim>(unnamed)</span>')+'<div class="mac-sub mono">'+esc(d.mac)+'</div></td><td class=mono>'+esc(d.mac)+'</td><td><span class=bar><i style="width:'+p+'%"></i></span><span class=dim>'+d.rssi+'</span></td><td>'+(d.skimmer?'<span class=tag>SKIMMER</span>':d.pentool?'<span class="tag p">PENTOOL</span>':'<span class="tag g">BLE</span>')+'</td></tr>'}).join('')||'<tr><td colspan=4 class=dim>No devices yet&hellip;</td></tr>';
+  $('rows').innerHTML=rows.map(d=>{var p=rssiPct(d.rssi);return '<tr class="'+(d.skimmer?'skim':d.pentool?'pent':'')+'"><td>'+(esc(d.name)||'<span class=dim>(unnamed)</span>')+'<div class="mac-sub mono">'+esc(d.mac)+'</div></td><td class=mono>'+esc(d.mac)+'</td><td><span class=bar><i style="width:'+p+'%"></i></span><span class=dim>'+d.rssi+'</span></td><td>'+(d.skimmer?'<span class=tag>SKIMMER</span>':d.pentool?'<span class="tag p">PENTOOL</span>':'<span class="tag g">BLE</span>')+'</td><td class=dim>'+ago(now-d.lastMs)+'</td></tr>'}).join('')||'<tr><td colspan=5 class=dim>No devices yet&hellip;</td></tr>';
   $('count').textContent='('+rows.length+')';
  }catch(e){console.error(e)}
 }

@@ -75,6 +75,16 @@ static HyperLogLog s_hllPentool;
 // the session sets, since both are updated together from the BLE callback).
 static std::map<String, BleDeviceRecord> s_devices;
 
+// Detail-table keep priority — higher survives longer when the table is full.
+// Flagged discoveries are pinned regardless of age (skimmers above pentools),
+// then named devices; anonymous background BLE (no name, not flagged) is shed
+// first so the dashboard stays full of meaningful entries instead of noise.
+static inline int detailKeepRank(bool skimmer, bool pentool, bool named) {
+    if (skimmer) return 3;
+    if (pentool) return 2;
+    return named ? 1 : 0;
+}
+
 // ---- Scan callbacks ----
 class ScanCallbacks : public BLEAdvertisedDeviceCallbacks {
     void onResult(BLEAdvertisedDevice advertisedDevice) override {
@@ -103,27 +113,43 @@ class ScanCallbacks : public BLEAdvertisedDeviceCallbacks {
                 if (skimmer) r.isSkimmer = true;       // sticky once flagged
                 if (pentool) r.isPentool = true;       // sticky once flagged
             } else {
-                // New device. When the table is full, evict the least-recently
-                // seen entry instead of dropping the newcomer, so the dashboard
-                // keeps tracking current devices across long runs / MAC floods.
-                // Actively-seen skimmers have a recent lastSeenMs, so they are
-                // not the eviction target while they're in range.
+                // New device. When the table is full, shed the lowest-priority
+                // entry (anonymous background BLE first, then least-recently
+                // seen) so flagged discoveries and named devices stay on the
+                // list regardless of age. If the newcomer itself is the
+                // lowest-priority candidate, drop it rather than bump something
+                // more useful off the list — this is how "several unnamed BLE"
+                // get kept out to make room for the detections that matter.
+                bool insert = true;
                 if (s_devices.size() >= BLE_DETAIL_CAP) {
-                    auto oldest = s_devices.begin();
-                    for (auto i = s_devices.begin(); i != s_devices.end(); ++i)
-                        if (i->second.lastSeenMs < oldest->second.lastSeenMs) oldest = i;
-                    s_devices.erase(oldest);
+                    auto victim = s_devices.end();
+                    int victimRank = 99;
+                    uint32_t victimSeen = 0;
+                    for (auto i = s_devices.begin(); i != s_devices.end(); ++i) {
+                        const int ri = detailKeepRank(i->second.isSkimmer,
+                                                      i->second.isPentool,
+                                                      i->second.name.length() > 0);
+                        if (victim == s_devices.end() || ri < victimRank ||
+                            (ri == victimRank && i->second.lastSeenMs < victimSeen)) {
+                            victim = i; victimRank = ri; victimSeen = i->second.lastSeenMs;
+                        }
+                    }
+                    const int newRank = detailKeepRank(skimmer, pentool, name.length() > 0);
+                    if (victimRank <= newRank) s_devices.erase(victim);
+                    else                       insert = false;
                 }
-                BleDeviceRecord r;
-                r.mac = mac;
-                r.name = name;
-                r.rssi = rssi;
-                r.isSkimmer = skimmer;
-                r.isPentool = pentool;
-                r.firstSeenMs = now;
-                r.lastSeenMs = now;
-                r.seenCount = 1;
-                s_devices.emplace(mac, r);
+                if (insert) {
+                    BleDeviceRecord r;
+                    r.mac = mac;
+                    r.name = name;
+                    r.rssi = rssi;
+                    r.isSkimmer = skimmer;
+                    r.isPentool = pentool;
+                    r.firstSeenMs = now;
+                    r.lastSeenMs = now;
+                    r.seenCount = 1;
+                    s_devices.emplace(mac, r);
+                }
             }
             xSemaphoreGive(s_sessionMutex);
         }
