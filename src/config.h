@@ -109,8 +109,13 @@
 
 // Max distinct devices kept in the detailed table that feeds the dashboard.
 // Bounds RAM; the session unique-MAC counters are tracked separately and higher.
+// Each entry costs a std::map node plus two heap Strings (~100+ bytes), so on
+// this board's very tight heap (~30 KB free) the table is a major consumer:
+// 300 entries held ~30 KB just here. 120 keeps a useful live list while leaving
+// far more headroom for the WiFi AP's handshake buffers (the LRU eviction in
+// ble_scanner keeps the most recently seen devices, including active skimmers).
 #ifndef BLE_DETAIL_CAP
-#define BLE_DETAIL_CAP 300
+#define BLE_DETAIL_CAP 120
 #endif
 
 // ----- Skimmer suspicious names (defaults; runtime list lives in runtime_config) -----

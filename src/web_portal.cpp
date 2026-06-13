@@ -69,28 +69,42 @@ static void handleApiStatus() {
 static void handleApiDevices() {
     std::vector<BleDeviceRecord> devices = ble_scanner_snapshot();
 
-    String json;
-    json.reserve(128 + devices.size() * 96);
-    json += "{\"nowMs\":";
-    json += String(millis());
-    json += ",\"count\":";
-    json += String((int)devices.size());
-    json += ",\"devices\":[";
+    // Stream the response as HTTP chunked transfer instead of building the whole
+    // device list as one big String. On a board running with only ~30 KB free
+    // heap, a 300-device list is a ~29 KB contiguous allocation that — on top of
+    // the snapshot copy above — exceeds free heap, so the request fails and the
+    // dashboard won't load. A small reused buffer flushed every few KB keeps the
+    // peak allocation tiny and leaves headroom for the WiFi AP.
+    s_server.setContentLength(CONTENT_LENGTH_UNKNOWN);
+    s_server.send(200, "application/json", "");
+
+    String chunk;
+    chunk.reserve(1280);
+    chunk += "{\"nowMs\":";
+    chunk += String(millis());
+    chunk += ",\"count\":";
+    chunk += String((int)devices.size());
+    chunk += ",\"devices\":[";
     for (size_t i = 0; i < devices.size(); i++) {
         const BleDeviceRecord& d = devices[i];
-        if (i) json += ',';
-        json += "{\"mac\":";   appendJsonString(json, d.mac);
-        json += ",\"name\":";  appendJsonString(json, d.name);
-        json += ",\"rssi\":";  json += String(d.rssi);
-        json += ",\"skimmer\":"; json += d.isSkimmer ? "true" : "false";
-        json += ",\"pentool\":"; json += d.isPentool ? "true" : "false";
-        json += ",\"seen\":";  json += String(d.seenCount);
-        json += ",\"firstMs\":"; json += String(d.firstSeenMs);
-        json += ",\"lastMs\":";  json += String(d.lastSeenMs);
-        json += '}';
+        if (i) chunk += ',';
+        chunk += "{\"mac\":";   appendJsonString(chunk, d.mac);
+        chunk += ",\"name\":";  appendJsonString(chunk, d.name);
+        chunk += ",\"rssi\":";  chunk += String(d.rssi);
+        chunk += ",\"skimmer\":"; chunk += d.isSkimmer ? "true" : "false";
+        chunk += ",\"pentool\":"; chunk += d.isPentool ? "true" : "false";
+        chunk += ",\"seen\":";  chunk += String(d.seenCount);
+        chunk += ",\"firstMs\":"; chunk += String(d.firstSeenMs);
+        chunk += ",\"lastMs\":";  chunk += String(d.lastSeenMs);
+        chunk += '}';
+        if (chunk.length() >= 1024) {   // flush in small batches, reuse the buffer
+            s_server.sendContent(chunk);
+            chunk = "";
+        }
     }
-    json += "]}";
-    s_server.send(200, "application/json", json);
+    chunk += "]}";
+    s_server.sendContent(chunk);
+    s_server.sendContent("");   // zero-length chunk terminates the response
 }
 
 // ---- Dashboard page -------------------------------------------------------
