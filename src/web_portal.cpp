@@ -160,14 +160,15 @@ td:first-child{word-break:break-word}
 .tag.p{background:rgba(124,58,237,.14);color:#7c3aed}
 .foot{margin-top:16px;color:var(--muted);font-size:12px;text-align:center}
 /* Full-page detection alert: an edge glow that blinks 5x at 1Hz when a new
-   flagged device appears. Solid color at the very edge, fading in both hue and
-   transparency over 2cm toward the centre. pointer-events:none so it never
-   blocks the table. skim = red->orange, pent = purple->yellow. */
-#alert{position:fixed;inset:0;z-index:50;pointer-events:none;opacity:0}
+   flagged device appears. Inset box-shadow so the glow hugs rounded corners
+   (matching a phone screen) and fades in hue + transparency ~0.5cm inward: a
+   tight inner-color rim plus a softer outer-color glow. pointer-events:none so
+   it never blocks the table. skim = red->orange, pent = purple->yellow. */
+#alert{position:fixed;inset:0;z-index:50;pointer-events:none;opacity:0;border-radius:40px}
 #alert.run{animation:alertblink 1s ease-in-out 5}
 @keyframes alertblink{0%,100%{opacity:0}50%{opacity:1}}
-#alert.skim{background:linear-gradient(to right,rgba(229,30,30,.92),rgba(255,150,30,0) 2cm) left/2cm 100% no-repeat,linear-gradient(to left,rgba(229,30,30,.92),rgba(255,150,30,0) 2cm) right/2cm 100% no-repeat,linear-gradient(to bottom,rgba(229,30,30,.92),rgba(255,150,30,0) 2cm) top/100% 2cm no-repeat,linear-gradient(to top,rgba(229,30,30,.92),rgba(255,150,30,0) 2cm) bottom/100% 2cm no-repeat}
-#alert.pent{background:linear-gradient(to right,rgba(150,40,220,.92),rgba(240,220,40,0) 2cm) left/2cm 100% no-repeat,linear-gradient(to left,rgba(150,40,220,.92),rgba(240,220,40,0) 2cm) right/2cm 100% no-repeat,linear-gradient(to bottom,rgba(150,40,220,.92),rgba(240,220,40,0) 2cm) top/100% 2cm no-repeat,linear-gradient(to top,rgba(150,40,220,.92),rgba(240,220,40,0) 2cm) bottom/100% 2cm no-repeat}
+#alert.skim{box-shadow:inset 0 0 .18cm rgba(229,30,30,.95),inset 0 0 .5cm rgba(255,140,30,.5)}
+#alert.pent{box-shadow:inset 0 0 .18cm rgba(150,40,220,.95),inset 0 0 .5cm rgba(240,220,40,.5)}
 @media(max-width:520px){
 .wrap{width:100%;padding:16px 12px 32px}
 .meta{text-align:left;padding-top:0}
