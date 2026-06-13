@@ -49,10 +49,16 @@ int battery_millivolts() { return 0; }
 
 // Resting-voltage discharge curve for a 1S LiPo, linearly interpolated.
 // Voltage under load / while charging skews high; treat the % as approximate.
+//
+// 100% is anchored at 4.10 V, not the textbook 4.20 V, because the on-board
+// charger tops the cell out at ~4.10 V (measured) — charging to 4.1 V instead
+// of 4.2 V is gentler on the cell and is this board's actual "full". The lower
+// points are rescaled to that ceiling so a fully-charged pack reads ~100%
+// instead of ~90%. Any cell that does reach 4.2 V still clamps to 100%.
 int battery_percent(int mv) {
     static const struct { int mv; int pct; } curve[] = {
-        {4200, 100}, {4100, 90}, {4000, 78}, {3900, 62}, {3800, 45},
-        {3700, 25},  {3600, 10}, {3500, 4},  {3300, 0},
+        {4100, 100}, {4000, 87}, {3900, 69}, {3800, 50},
+        {3700, 28},  {3600, 11}, {3500, 4},  {3300, 0},
     };
     const size_t n = sizeof(curve) / sizeof(curve[0]);
     if (mv >= curve[0].mv) return 100;
