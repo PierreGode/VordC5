@@ -312,6 +312,106 @@
         word-break: break-word;
       }
 
+      .safety-banner {
+        margin-top: 16px;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 10px 14px;
+        border-radius: 14px;
+        border: 1px solid #f3c2a0;
+        background: linear-gradient(135deg, #fff4ec, #fdeee2);
+        padding: 12px 14px;
+      }
+
+      .safety-banner p {
+        margin: 0;
+        flex: 1 1 240px;
+        color: #8a4326;
+        font-size: 13.5px;
+      }
+
+      button.safety-btn {
+        border: 0;
+        border-radius: 12px;
+        background: linear-gradient(135deg, var(--accent), #ff7b3e);
+        color: #fff;
+        font-family: "Sora", sans-serif;
+        font-size: 13px;
+        font-weight: 700;
+        padding: 10px 14px;
+        cursor: pointer;
+        white-space: nowrap;
+        box-shadow: 0 10px 18px rgba(242, 95, 58, 0.22);
+      }
+
+      .info-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 90;
+        display: grid;
+        place-items: center;
+        background: rgba(10, 16, 12, 0.62);
+        backdrop-filter: blur(3px);
+        padding: 16px;
+      }
+
+      .info-overlay[hidden] { display: none; }
+
+      .info-dialog {
+        width: min(640px, 96vw);
+        max-height: 90vh;
+        overflow-y: auto;
+        border-radius: 18px;
+        border: 1px solid var(--line);
+        background: var(--panel);
+        color: var(--ink);
+        padding: 24px 26px;
+        box-shadow: 0 24px 60px rgba(20, 30, 22, 0.3);
+      }
+
+      .info-dialog h3 {
+        margin: 0 0 6px;
+        font-family: "Sora", sans-serif;
+        font-size: 22px;
+      }
+
+      .info-dialog .info-lead {
+        margin: 0 0 14px;
+        color: var(--accent);
+        font-weight: 700;
+      }
+
+      .info-dialog ol {
+        margin: 0 0 14px;
+        padding-left: 20px;
+        color: var(--ink);
+        line-height: 1.5;
+      }
+
+      .info-dialog li { margin-bottom: 8px; }
+      .info-dialog li ul { margin: 6px 0 0; color: var(--muted); }
+
+      .info-dialog .info-disclaimer {
+        margin: 0 0 16px;
+        padding: 12px 14px;
+        border-radius: 12px;
+        border: 1px solid var(--line);
+        background: var(--bg-soft);
+        color: var(--muted);
+        font-size: 13.5px;
+      }
+
+      .info-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      .info-dialog a { color: var(--accent-2); }
+
       @media (max-width: 760px) {
         .hero { grid-template-columns: 1fr; }
         .targets { grid-template-columns: 1fr; }
@@ -326,6 +426,12 @@
           <h1>Vord <span class="accent">C5</span></h1>
           <p class="lead">
             Continuous BLE skimmer detection for ESP32-C5 boards, always-on skimmer hunting.
+          </p>
+          <p class="lead">
+            <strong>Detection only.</strong> Vord C5 passively listens for and flags
+            suspicious BLE signatures &mdash; it never connects to, jams, or interferes
+            with any device. An educational tool: a match is a signal to be cautious,
+            not proof.
           </p>
         </article>
         <aside class="hero-art" aria-hidden="true">
@@ -346,6 +452,11 @@
         <p class="note">
           If flashing fails, hold BOOT, tap RESET, release BOOT, then retry.
         </p>
+
+        <div class="safety-banner">
+          <p><strong>Found a skimmer?</strong> Don't touch it, don't tamper with it &mdash; call the authorities.</p>
+          <button type="button" class="safety-btn" id="safety-open">What to do</button>
+        </div>
 
         <div id="browserWarn" class="browser-warn">
           Web Serial is only available in desktop Chrome, Edge, or Opera.
@@ -378,6 +489,31 @@
       </section>
     </main>
 
+    <div id="info-overlay" class="info-overlay" hidden role="dialog" aria-modal="true" aria-labelledby="info-title">
+      <div class="info-dialog">
+        <h3 id="info-title">What to do if you find a skimmer</h3>
+        <p class="info-lead">Do not touch it. Do not tamper with it. Call the authorities.</p>
+        <p>A skimmer is evidence in a crime. Handling it can destroy evidence, may be illegal, and can be dangerous &mdash; these devices are installed by criminals.</p>
+        <ol>
+          <li><strong>Do not touch or remove anything.</strong> Leave the device, the pump/terminal, and the area exactly as you found it.</li>
+          <li><strong>Do not pay or insert your card there.</strong> Use a different terminal, pay inside, or use contactless/cash.</li>
+          <li><strong>Note the location and pump/terminal number</strong> &mdash; and, if it's safe, the dashboard details (device name, MAC, time). Don't linger or confront anyone.</li>
+          <li><strong>Tell the on-site staff</strong> so they can shut the terminal down &mdash; but staff are not a substitute for the police.</li>
+          <li><strong>Call the authorities.</strong> Report it to your local police (non-emergency line), or the emergency number if you feel unsafe.
+            <ul>
+              <li>In the US you can also report to the <a href="https://tips.fbi.gov" target="_blank" rel="noopener">FBI</a>, the <a href="https://reportfraud.ftc.gov" target="_blank" rel="noopener">FTC</a>, and your card issuer.</li>
+            </ul>
+          </li>
+          <li><strong>If you used a card there recently,</strong> monitor your statements and alert your bank.</li>
+        </ol>
+        <p class="info-disclaimer">⚠️ Vord C5 is an <strong>educational detection aid</strong>, not a law-enforcement tool. A match is a signal to be cautious, not proof &mdash; investigation, removal, and evidence handling must be left to the police.</p>
+        <div class="info-actions">
+          <a href="https://github.com/PierreGode/VordC5/blob/main/docs/found-a-skimmer.md" target="_blank" rel="noopener">Full guide on GitHub &rarr;</a>
+          <button type="button" class="bind" id="info-close">Got it</button>
+        </div>
+      </div>
+    </div>
+
     <div id="flash-overlay" class="flash-overlay" hidden>
       <div class="flash-dialog">
         <h3>Install Vord C5</h3>
@@ -399,6 +535,18 @@
       if (!("serial" in navigator)) {
         document.getElementById("browserWarn").style.display = "block";
       }
+
+      (function () {
+        const overlay = document.getElementById("info-overlay");
+        const show = () => overlay.removeAttribute("hidden");
+        const hide = () => overlay.setAttribute("hidden", "");
+        document.getElementById("safety-open").addEventListener("click", show);
+        document.getElementById("info-close").addEventListener("click", hide);
+        overlay.addEventListener("click", (e) => { if (e.target === overlay) hide(); });
+        document.addEventListener("keydown", (e) => {
+          if (e.key === "Escape" && !overlay.hasAttribute("hidden")) hide();
+        });
+      })();
       fetch("version.json", { cache: "no-store" })
         .then((r) => (r.ok ? r.json() : null))
         .then((v) => {
