@@ -161,14 +161,14 @@ td:first-child{word-break:break-word}
 .foot{margin-top:16px;color:var(--muted);font-size:12px;text-align:center}
 /* Full-page detection alert: an edge glow that blinks 5x at 1Hz when a new
    flagged device appears. Inset box-shadow so the glow hugs rounded corners
-   (matching a phone screen) and fades in hue + transparency ~0.5cm inward: a
+   (matching a phone screen) and fades in hue + transparency ~1cm inward: a
    tight inner-color rim plus a softer outer-color glow. pointer-events:none so
    it never blocks the table. skim = red->orange, pent = purple->yellow. */
 #alert{position:fixed;inset:0;z-index:50;pointer-events:none;opacity:0;border-radius:40px}
 #alert.run{animation:alertblink 1s ease-in-out 5}
 @keyframes alertblink{0%,100%{opacity:0}50%{opacity:1}}
-#alert.skim{box-shadow:inset 0 0 .18cm rgba(229,30,30,.95),inset 0 0 .5cm rgba(255,140,30,.5)}
-#alert.pent{box-shadow:inset 0 0 .18cm rgba(150,40,220,.95),inset 0 0 .5cm rgba(240,220,40,.5)}
+#alert.skim{box-shadow:inset 0 0 .18cm rgba(229,30,30,.95),inset 0 0 1cm rgba(255,140,30,.5)}
+#alert.pent{box-shadow:inset 0 0 .18cm rgba(150,40,220,.95),inset 0 0 1cm rgba(240,220,40,.5)}
 @media(max-width:520px){
 .wrap{width:100%;padding:16px 12px 32px}
 .meta{text-align:left;padding-top:0}
@@ -226,17 +226,20 @@ function ago(ms){if(ms<0)ms=0;let s=Math.floor(ms/1000);if(s<60)return s+'s ago'
 function cat(d){return d.skimmer?0:d.pentool?1:2}
 // Border-blink alert on first sighting of a flagged MAC. A running blink isn't
 // restarted (so a device staying in range blinks once, not forever), except a
-// skimmer may override an in-progress pentool blink.
+// skimmer may override an in-progress pentool blink. The first tick only seeds
+// the seen-sets (no blink) so devices already present at page load don't alert;
+// only MACs that appear after the page is open trigger the border.
 const seenSkim=new Set(),seenPent=new Set();
 function fireAlert(kind){const a=$('alert');if(a.classList.contains('run')&&!(kind=='skim'&&a.classList.contains('pent')))return;a.classList.remove('run','skim','pent');void a.offsetWidth;a.classList.add(kind,'run')}
-let skimOnly=false;
+let skimOnly=false,primed=false;
 async function tick(){
  try{
   const st=await fetch('/api/status').then(r=>r.json());
   const dv=await fetch('/api/devices').then(r=>r.json());
   let nS=false,nP=false;
   for(const d of dv.devices){if(d.skimmer){if(!seenSkim.has(d.mac)){seenSkim.add(d.mac);nS=true}}else if(d.pentool){if(!seenPent.has(d.mac)){seenPent.add(d.mac);nP=true}}}
-  if(nS)fireAlert('skim');else if(nP)fireAlert('pent');
+  if(primed){if(nS)fireAlert('skim');else if(nP)fireAlert('pent')}
+  primed=true;
   $('lBle').textContent=st.liveBle;$('lSkim').textContent=st.liveSkimmer;$('lPent').textContent=st.livePentool;
   $('sBle').textContent=st.sessionBle;$('sSkim').textContent=st.sessionSkimmer;$('sPent').textContent=st.sessionPentool;
   $('scan').textContent=st.scanning?'Scanning':'Paused';
