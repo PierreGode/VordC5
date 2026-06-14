@@ -159,16 +159,16 @@ td:first-child{word-break:break-word}
 .tag.g{background:rgba(13,163,177,.14);color:var(--accent-2)}
 .tag.p{background:rgba(124,58,237,.14);color:#7c3aed}
 .foot{margin-top:16px;color:var(--muted);font-size:12px;text-align:center}
-/* Full-page detection alert: an edge glow that blinks 5x at 1Hz when a new
-   flagged device appears. Inset box-shadow so the glow hugs rounded corners
-   (matching a phone screen) and fades in hue + transparency ~1cm inward: a
-   tight inner-color rim plus a softer outer-color glow. pointer-events:none so
-   it never blocks the table. skim = red->orange, pent = purple->yellow. */
-#alert{position:fixed;inset:0;z-index:50;pointer-events:none;opacity:0;border-radius:40px}
+/* Full-page detection alert: two 1.5cm vertical bands on the left and right
+   edges that blink 5x at 1Hz when a new flagged device appears. Square corners
+   (no border-radius): each band is a horizontal gradient that's a solid color
+   at the edge and fades in hue + transparency 1.5cm inward. pointer-events:none
+   so it never blocks the table. skim = red->orange, pent = purple->yellow. */
+#alert{position:fixed;inset:0;z-index:50;pointer-events:none;opacity:0}
 #alert.run{animation:alertblink 1s ease-in-out 5}
 @keyframes alertblink{0%,100%{opacity:0}50%{opacity:1}}
-#alert.skim{box-shadow:inset 0 0 .18cm rgba(229,30,30,.95),inset 0 0 1cm rgba(255,140,30,.5)}
-#alert.pent{box-shadow:inset 0 0 .18cm rgba(150,40,220,.95),inset 0 0 1cm rgba(240,220,40,.5)}
+#alert.skim{background:linear-gradient(90deg,rgba(229,30,30,.95),rgba(255,140,30,.5) .4cm,transparent 1.5cm),linear-gradient(270deg,rgba(229,30,30,.95),rgba(255,140,30,.5) .4cm,transparent 1.5cm)}
+#alert.pent{background:linear-gradient(90deg,rgba(150,40,220,.95),rgba(240,220,40,.5) .4cm,transparent 1.5cm),linear-gradient(270deg,rgba(150,40,220,.95),rgba(240,220,40,.5) .4cm,transparent 1.5cm)}
 @media(max-width:520px){
 .wrap{width:100%;padding:16px 12px 32px}
 .meta{text-align:left;padding-top:0}
