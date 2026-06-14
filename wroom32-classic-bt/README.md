@@ -1,35 +1,134 @@
-# WROOM-32 classic-Bluetooth scout
+# ESP32-WROOM-32 classic-Bluetooth add-on
 
-The ESP32-C5 main board only scans **BLE (LE)** advertisements. Several skimmer
-modules in the C5's fingerprint list are **classic Bluetooth (BR/EDR)** parts —
-HC-03/04/05/06/08, CC41, SPP-CA, LINVOR, MLT-BT05 — and can **never** match a BLE
-scan.
+The ESP32-C5 radio only scans **BLE (LE)** advertisements. Several skimmer modules
+in the C5's fingerprint list are **classic Bluetooth (BR/EDR)** parts — HC-03/04/05/06/08,
+CC41, SPP-CA, LINVOR, MLT-BT05 — and can **never** match a BLE scan.
 
-This sketch runs on a classic-BT-capable **ESP32-WROOM-32** placed next to the C5.
-It does a classic-BT inquiry, matches discovered device names against the same
-skimmer fingerprints the C5 uses, and forwards each hit over UART. The C5 fires
-its **existing** LED / screen / dashboard alert — the same alarm as a BLE hit.
+This add-on bolts a classic-BT-capable **ESP32-WROOM-32** next to the C5. It runs a
+classic-BT inquiry, matches discovered device names against the **same** skimmer
+fingerprints the C5 uses, and forwards each hit to the C5 over a single UART wire.
+The C5 then fires its **existing** alarm — LED, screen, and dashboard
+counters/device list — exactly as it does for a BLE hit.
 
-The C5 stays the brain. The WROOM-32 is just a "classic-BT nose" beside it: two
-separate boards talking over a few wires.
+The C5 stays the brain. The WROOM-32 is just a second radio ("classic-BT nose")
+beside it: two separate boards talking over a few wires.
 
-## Wiring (4 wires, no level shifter — both boards are 3.3 V logic)
+---
 
-| WROOM-32              |     | ESP32-C5                          |
-| --------------------- | --- | --------------------------------- |
-| TX2 (GPIO17)          | →   | `CLASSIC_BT_UART_RX_PIN`          |
-| GND                   | →   | GND **(required — shared ground)**|
-| 5V (VIN) or 3V3       | →   | same supply                       |
-| RX2 (GPIO16)          | →   | *(optional; C5 only listens)*     |
+## Board compatibility
 
-Shared ground is the one critical connection. Both boards can run from the same
-USB 5 V.
+| C5 board                                | Works? | Why |
+| --------------------------------------- | ------ | --- |
+| **ESP32-C5 Dev Board / Waveshare WIFI6-KIT** | ✅ **Yes — recommended** | Full GPIO header with free pins, 5V/3V3/GND broken out. Easy to solder. |
+| **Seeed XIAO ESP32-C5**                 | ⚠️ Possible | Castellated `D0`–`D10` + `5V`/`3V3`/`GND` pads are exposed, but space is tight and `D0` is already the proximity-LED pin. |
+| **LilyGO T-Dongle-C5**                  | ❌ No | Sealed USB-stick form factor — almost no exposed GPIO/power pads, and the display + APA102 LED already consume its pins. Nowhere to solder. |
+
+The rest of this guide targets the **ESP32-C5 Dev Board**.
+
+---
+
+## What you need
+
+- 1 × ESP32-WROOM-32 dev board (the common 30/38-pin "DevKitC" / "NodeMCU-32S"
+  style — any board with the WROOM-32 module and classic Bluetooth).
+- 2–4 jumper wires (or a soldering iron + thin wire for a permanent build).
+- A USB cable for the WROOM-32 (to power and flash it).
+
+> Both boards run at **3.3 V logic**, so the UART link needs **no level shifter**.
+
+---
+
+## Wiring / soldering guide (ports)
+
+You only strictly need **two** connections — `TX` and a shared `GND` — if you
+power the WROOM-32 from its own USB cable. Add the `5V` wire only if you want the
+C5 to power the WROOM-32 from a single USB supply.
+
+| Signal              | WROOM-32 pad        | →   | ESP32-C5 dev board pad | Required? |
+| ------------------- | ------------------- | --- | ---------------------- | --------- |
+| UART data (BT→C5)   | **GPIO17** (`TX2`)  | →   | **GPIO20** (`IO20`)    | ✅ yes |
+| Ground              | **GND**             | →   | **GND**                | ✅ yes (shared ground is critical) |
+| Power (optional)    | **5V** / **VIN**    | →   | **5V**                 | only if powering WROOM from the C5 |
+| UART data (C5→BT)   | **GPIO16** (`RX2`)  | →   | *(leave unconnected)*  | ❌ no — the C5 only listens |
+
+```
+   ESP32-WROOM-32                         ESP32-C5 Dev Board
+  ┌───────────────┐                      ┌───────────────────┐
+  │  GPIO17 (TX2) ●├──────────────────────▶● GPIO20 (IO20)    │
+  │          GND  ●├──────────────────────●  GND              │
+  │       5V/VIN  ●├ ─ ─ (optional) ─ ─ ─ ●  5V               │
+  │  GPIO16 (RX2)  │   (unused)            │                   │
+  └───────────────┘                      └───────────────────┘
+```
+
+**Pins to avoid on the C5 dev board** (already in use): `GPIO27` (onboard RGB
+LED), `GPIO6` (battery ADC), `GPIO13`/`GPIO14` (USB). `GPIO20` is free and is the
+firmware default. If you must use a different GPIO, pick another free,
+non-strapping pin and override `CLASSIC_BT_UART_RX_PIN` to match (see below).
+
+**Power options**
+- *Two USB cables* (simplest): power and flash each board from its own USB. Wire
+  only `TX → GPIO20` and `GND → GND`.
+- *One USB supply*: power the C5 over USB, then feed the WROOM-32 from the C5's
+  `5V` pin (`5V → 5V/VIN`) plus the shared `GND`.
+
+---
+
+## Flashing the WROOM-32
+
+The sketch is [`wroom32-classic-bt.ino`](wroom32-classic-bt.ino). Flash the
+WROOM-32 over **its own USB port** (not the C5's).
+
+### Option A — Arduino IDE
+
+1. **Add the ESP32 boards** (once): *File → Preferences →
+   Additional boards manager URLs*, add
+   `https://espressif.github.io/arduino-esp32/package_esp32_dev_index.json`.
+   Then *Tools → Board → Boards Manager…*, install **esp32 by Espressif Systems**.
+2. Open `wroom32-classic-bt/wroom32-classic-bt.ino`.
+3. *Tools → Board* → **ESP32 Dev Module**.
+4. *Tools → Port* → the WROOM-32's COM port.
+5. Click **Upload**. If it hangs at "Connecting…", hold the **BOOT** button on the
+   WROOM-32 until flashing starts.
+
+### Option B — arduino-cli
+
+```sh
+# one-time: install the ESP32 core
+arduino-cli config add board_manager.additional_urls \
+  https://espressif.github.io/arduino-esp32/package_esp32_dev_index.json
+arduino-cli core update-index
+arduino-cli core install esp32:esp32
+
+# from the repo root
+arduino-cli compile --fqbn esp32:esp32:esp32 wroom32-classic-bt
+arduino-cli upload  --fqbn esp32:esp32:esp32 -p COM5 wroom32-classic-bt   # set your port
+```
+
+> If compile fails with *"Classic Bluetooth is not enabled"*, the selected
+> board/partition has BT disabled — use a standard **ESP32 Dev Module** profile.
+
+### Verify it's running
+
+Open the WROOM-32's USB serial monitor at **115200 baud**. You should see:
+
+```
+[VordBT] classic-BT scout up; inquiring...
+```
+
+and, when a classic-BT skimmer module is in range, a line per hit:
+
+```
+[VordBT] hit -> VBT1|SKIM|-55|aa:bb:cc:dd:ee:ff|HC-05
+```
+
+---
 
 ## Enabling the receiver on the C5
 
-The C5 receiver is compiled out by default. Enable it and point it at the GPIO
-you wired to the WROOM-32 TX (pick one that's free on **your** board — avoid the
-LED, the battery ADC, and, on the T-Dongle-C5, the display pins):
+The C5-side receiver is **compiled out by default** — nothing changes until you
+build with the flag. In [`../platformio.ini`](../platformio.ini), under
+`[env:esp32c5-dev]`, add to `build_flags`:
 
 ```ini
 build_flags =
@@ -38,21 +137,19 @@ build_flags =
     -DCLASSIC_BT_UART_RX_PIN=20
 ```
 
-`CLASSIC_BT_UART_BAUD` defaults to 115200 and must match `UART_BAUD` in this
-sketch. See the `VORD_HAS_CLASSIC_BT_UART` block in [`../src/config.h`](../src/config.h).
+Then rebuild and flash the C5 normally (`pio run -e esp32c5-dev`).
+`CLASSIC_BT_UART_BAUD` defaults to **115200** and must match `UART_BAUD` in the
+sketch. See the `VORD_HAS_CLASSIC_BT_UART` block in
+[`../src/config.h`](../src/config.h) for all knobs.
 
-## Building the WROOM-32 sketch
+### End-to-end test
 
-- **Arduino IDE**: board **ESP32 Dev Module** (WROOM-32), open `wroom32-classic-bt.ino`, upload.
-- **arduino-cli**:
-  ```sh
-  arduino-cli compile --fqbn esp32:esp32:esp32 wroom32-classic-bt
-  arduino-cli upload  --fqbn esp32:esp32:esp32 -p <PORT> wroom32-classic-bt
-  ```
+With both boards wired and flashed, bring a classic-BT module (e.g. an HC-05) into
+range. The C5 should light its proximity LED (and flash the screen on boards that
+have one), and the device should appear in the web dashboard's device list flagged
+as a skimmer — the same as any BLE hit.
 
-Classic Bluetooth (Bluedroid) is enabled by default on the WROOM-32. If the
-sketch fails to compile with a "Classic Bluetooth is not enabled" error, the
-selected board/partition has BT disabled — choose a standard WROOM-32 profile.
+---
 
 ## Line protocol (WROOM → C5, newline-terminated)
 
@@ -67,6 +164,8 @@ VBT1|<TYPE>|<RSSI>|<MAC>|<NAME>
 
 Lines that don't start with `VBT1|` are ignored by the C5, so USB-debug chatter
 or line noise can't trip the alarm.
+
+---
 
 ## Keeping the fingerprint list in sync
 

@@ -186,23 +186,29 @@ the brain; the WROOM-32 is just a second radio beside it.
 behaves exactly as before; the C5-side receiver is compiled out unless you enable
 the build flag.
 
-### Wiring (4 wires, no level shifter — both boards are 3.3 V logic)
+**Board compatibility:** the **ESP32-C5 Dev Board** is the recommended target (free
+GPIO header + power pads). The **Seeed XIAO ESP32-C5** can work but is cramped. The
+**LilyGO T-Dongle-C5 does *not* work** — it's a sealed USB-stick with no exposed
+GPIO/power pads to solder to.
 
-| WROOM-32         |     | ESP32-C5                           |
-| ---------------- | --- | ---------------------------------- |
-| TX2 (GPIO17)     | →   | `CLASSIC_BT_UART_RX_PIN`           |
-| GND              | →   | GND **(required — shared ground)** |
-| 5V (VIN) or 3V3  | →   | same supply                        |
-| RX2 (GPIO16)     | →   | *(optional; the C5 only listens)*  |
+### Wiring (ESP32-C5 Dev Board — no level shifter, both are 3.3 V logic)
+
+| WROOM-32         |     | ESP32-C5 Dev Board                 | Required? |
+| ---------------- | --- | ---------------------------------- | --------- |
+| TX2 (GPIO17)     | →   | GPIO20 (`CLASSIC_BT_UART_RX_PIN`)  | ✅ |
+| GND              | →   | GND **(shared ground)**            | ✅ |
+| 5V (VIN)         | →   | 5V (only if powering WROOM from C5)| optional |
+| RX2 (GPIO16)     | →   | *(unconnected; the C5 only listens)* | ❌ |
+
+`GPIO20` is free on the dev board (avoid `GPIO27` = LED, `GPIO6` = battery ADC,
+`GPIO13/14` = USB).
 
 ### Enabling it
 
 1. Flash the WROOM-32 with the scout sketch in
-   [`wroom32-classic-bt/`](wroom32-classic-bt/) (Arduino IDE or arduino-cli,
-   board "ESP32 Dev Module"). See its [README](wroom32-classic-bt/README.md).
-2. Build the C5 firmware with the receiver enabled, pointing it at a GPIO that's
-   free on **your** board (avoid the LED, battery ADC, and — on the T-Dongle-C5 —
-   the display pins):
+   [`wroom32-classic-bt/`](wroom32-classic-bt/) — see its **full soldering +
+   flashing guide**: [wroom32-classic-bt/README.md](wroom32-classic-bt/README.md).
+2. Build the C5 firmware with the receiver enabled:
 
    ```ini
    build_flags =
