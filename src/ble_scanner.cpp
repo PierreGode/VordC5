@@ -27,8 +27,8 @@ static BLEScan* s_pScan = nullptr;
 // exactness (~3% standard error) for a hard memory bound.
 class HyperLogLog {
 public:
-    static constexpr int      P = 14;          // 2^P registers
-    static constexpr uint32_t M = 1u << P;     // 16384 registers, 1 byte each
+    static constexpr int      P = 10;          // 2^P registers
+    static constexpr uint32_t M = 1u << P;     // 1024 registers, 1 byte each
 
     void add(const char* s) {
         const uint64_t h   = hash64(s);
