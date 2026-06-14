@@ -147,7 +147,9 @@ Vord C5 classifies suspicious devices by BLE advertised name fingerprints.
 
 **Default fingerprints include:**
 
-**Classic Bluetooth SPP/BLE modules** (widely used in gas pump skimmers):
+**Classic Bluetooth SPP modules** (widely used in gas pump skimmers) — these are
+**BR/EDR**, not BLE, so the C5's radio can't see them on its own; detecting them
+needs the optional [ESP32-WROOM-32 add-on](#classic-bluetooth-brdr-via-esp32-wroom-32-add-on):
 - HC-03, HC-04, HC-05, HC-06, HC-08
 - BT-04, BT-05, BT-06, BT-08
 - CC41, CC41A
@@ -165,6 +167,52 @@ Vord C5 classifies suspicious devices by BLE advertised name fingerprints.
 
 Matching is normalized and case-insensitive, with tolerance for separators (dash, underscore, dot, space).
 So `HC-05`, `HC05`, and `hc_05` all match. The JDY prefix rule catches all JDY-xx variants automatically.
+
+## Classic Bluetooth (BR/EDR) via ESP32-WROOM-32 add-on
+
+The ESP32-C5 radio only scans **BLE (LE)** advertisements. Several skimmer
+modules in the fingerprint list above — **HC-03/04/05/06/08, CC41, SPP-CA,
+LINVOR, MLT-BT05** — are **classic Bluetooth (BR/EDR)** parts that *never* appear
+in a BLE scan, so the C5 cannot detect them by itself.
+
+To cover them, an optional **ESP32-WROOM-32** runs alongside the C5 as a
+"classic-BT nose". It performs a classic-BT inquiry, matches discovered names
+against the **same** fingerprint list, and forwards each hit to the C5 over a
+single UART wire. The C5 then fires its **existing** alarm — LED, screen, and
+dashboard counters/device list — exactly as it does for a BLE hit. The C5 stays
+the brain; the WROOM-32 is just a second radio beside it.
+
+**This is opt-in and changes nothing by default.** Without it, the firmware
+behaves exactly as before; the C5-side receiver is compiled out unless you enable
+the build flag.
+
+### Wiring (4 wires, no level shifter — both boards are 3.3 V logic)
+
+| WROOM-32         |     | ESP32-C5                           |
+| ---------------- | --- | ---------------------------------- |
+| TX2 (GPIO17)     | →   | `CLASSIC_BT_UART_RX_PIN`           |
+| GND              | →   | GND **(required — shared ground)** |
+| 5V (VIN) or 3V3  | →   | same supply                        |
+| RX2 (GPIO16)     | →   | *(optional; the C5 only listens)*  |
+
+### Enabling it
+
+1. Flash the WROOM-32 with the scout sketch in
+   [`wroom32-classic-bt/`](wroom32-classic-bt/) (Arduino IDE or arduino-cli,
+   board "ESP32 Dev Module"). See its [README](wroom32-classic-bt/README.md).
+2. Build the C5 firmware with the receiver enabled, pointing it at a GPIO that's
+   free on **your** board (avoid the LED, battery ADC, and — on the T-Dongle-C5 —
+   the display pins):
+
+   ```ini
+   build_flags =
+       ...
+       -DVORD_HAS_CLASSIC_BT_UART=1
+       -DCLASSIC_BT_UART_RX_PIN=20
+   ```
+
+See the `VORD_HAS_CLASSIC_BT_UART` block in [`src/config.h`](src/config.h) for the
+baud/pin knobs and the line protocol.
 
 ## What to do if you find a skimmer
 

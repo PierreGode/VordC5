@@ -320,4 +320,49 @@ static const char* PENTOOL_NAMES_DEFAULT[] = {
 #endif
 #endif // VORD_HAS_DISPLAY
 
+// ----- Classic Bluetooth (BR/EDR) UART sidecar (optional) -----------------
+// The C5's radio only does BLE (LE): its BLEScan never sees classic-Bluetooth
+// (BR/EDR) devices. Several skimmer modules in SKIMMER_NAMES_DEFAULT are classic
+// SPP parts (HC-05/06, SPP-CA, LINVOR, MLT-BT05 ...) and can NEVER match a BLE
+// scan. To cover them, a classic-BT-capable ESP32-WROOM-32 runs alongside the C5
+// (see wroom32-classic-bt/), does a classic inquiry, matches names against the
+// same fingerprint list, and forwards each hit as one line over UART. The C5
+// listens on a hardware UART and fires its existing LED/screen/dashboard alert —
+// the exact same alarm as a BLE hit.
+//
+// Wiring (both boards are 3.3 V logic; no level shifter):
+//     WROOM-32 TX (GPIO17) ---> C5 CLASSIC_BT_UART_RX_PIN
+//     WROOM-32 GND         ---> C5 GND   (REQUIRED — shared ground)
+// The C5 only listens, so its TX is optional (CLASSIC_BT_UART_TX_PIN = -1).
+//
+// Disabled by default. Enable per build with, e.g.:
+//     -DVORD_HAS_CLASSIC_BT_UART=1 -DCLASSIC_BT_UART_RX_PIN=20
+// IMPORTANT: pick an RX GPIO that is actually free on YOUR board (avoid the LED,
+// battery ADC and — on the T-Dongle-C5 — the display pins).
+#ifndef VORD_HAS_CLASSIC_BT_UART
+#define VORD_HAS_CLASSIC_BT_UART 0
+#endif
+#if VORD_HAS_CLASSIC_BT_UART
+// Hardware UART peripheral to use (Serial1). Serial0 is the USB-CDC console.
+#ifndef CLASSIC_BT_UART_NUM
+#define CLASSIC_BT_UART_NUM 1
+#endif
+// Must match UART_BAUD in the WROOM-32 sketch.
+#ifndef CLASSIC_BT_UART_BAUD
+#define CLASSIC_BT_UART_BAUD 115200
+#endif
+// GPIO the C5 listens on (wired to the WROOM-32 TX). No safe universal default —
+// override it for your board.
+#ifndef CLASSIC_BT_UART_RX_PIN
+#define CLASSIC_BT_UART_RX_PIN 20
+#endif
+// C5 TX back to the WROOM-32 is unused (-1 = don't assign a pin).
+#ifndef CLASSIC_BT_UART_TX_PIN
+#define CLASSIC_BT_UART_TX_PIN -1
+#endif
+#ifndef BT_UART_TASK_STACK
+#define BT_UART_TASK_STACK 3072
+#endif
+#endif // VORD_HAS_CLASSIC_BT_UART
+
 #endif // CONFIG_H

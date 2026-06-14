@@ -42,6 +42,14 @@ int  ble_scanner_session_count();
 int  ble_scanner_session_skimmer_count();
 int  ble_scanner_session_pentool_count();
 
+// Register a sighting that did NOT come from this chip's BLE scan. Used by the
+// classic-Bluetooth (BR/EDR) UART sidecar: a WROOM-32 alongside the C5 performs
+// a classic inquiry, matches names, and forwards hits over UART. They land in
+// the same session counters and device table as native BLE hits, so the
+// dashboard shows classic-BT skimmer modules too. Thread-safe.
+void ble_scanner_register_external(const String& mac, const String& name,
+                                   int rssi, bool skimmer, bool pentool);
+
 // Snapshot of the detailed device table for the web UI. Returns a copy taken
 // under the internal mutex so callers can iterate without holding the lock.
 std::vector<BleDeviceRecord> ble_scanner_snapshot();

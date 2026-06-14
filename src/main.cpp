@@ -16,6 +16,7 @@
 #include "runtime_config.h"
 #include "skimmer_led.h"
 #include "skimmer_display.h"
+#include "bt_uart.h"
 #include "web_portal.h"
 #include "battery.h"
 
@@ -35,6 +36,12 @@ void setup() {
     // Local-only alert paths on the device.
     skimmer_led_init();
     skimmer_display_init();   // T-Dongle-C5 screen alert (no-op on boards without a display)
+
+    // Classic-BT (BR/EDR) UART sidecar receiver: a WROOM-32 next to the C5
+    // forwards classic-Bluetooth skimmer-module hits over UART (no-op unless
+    // built with -DVORD_HAS_CLASSIC_BT_UART=1).
+    bt_uart_init();
+
     scan_cycle_init();
 
     // Continuous BLE scan task. On C5 this runs on the single available core.

@@ -85,6 +85,60 @@ static inline int detailKeepRank(bool skimmer, bool pentool, bool named) {
     return named ? 1 : 0;
 }
 
+// Insert or update a device record in the detailed table. Shared by the BLE
+// scan callback and the classic-BT UART sidecar (ble_scanner_register_external)
+// so both follow the same LRU/priority eviction. Caller MUST hold s_sessionMutex.
+static void upsertDevice(const String& mac, const String& name, int rssi,
+                         bool skimmer, bool pentool) {
+    const uint32_t now = millis();
+    auto it = s_devices.find(mac);
+    if (it != s_devices.end()) {
+        BleDeviceRecord& r = it->second;
+        r.rssi = rssi;
+        r.lastSeenMs = now;
+        r.seenCount++;
+        if (name.length()) r.name = name;     // keep the best name we've seen
+        if (skimmer) r.isSkimmer = true;       // sticky once flagged
+        if (pentool) r.isPentool = true;       // sticky once flagged
+        return;
+    }
+    // New device. When the table is full, shed the lowest-priority entry
+    // (anonymous background BLE first, then least-recently seen) so flagged
+    // discoveries and named devices stay on the list regardless of age. If the
+    // newcomer itself is the lowest-priority candidate, drop it rather than bump
+    // something more useful off the list.
+    bool insert = true;
+    if (s_devices.size() >= BLE_DETAIL_CAP) {
+        auto victim = s_devices.end();
+        int victimRank = 99;
+        uint32_t victimSeen = 0;
+        for (auto i = s_devices.begin(); i != s_devices.end(); ++i) {
+            const int ri = detailKeepRank(i->second.isSkimmer,
+                                          i->second.isPentool,
+                                          i->second.name.length() > 0);
+            if (victim == s_devices.end() || ri < victimRank ||
+                (ri == victimRank && i->second.lastSeenMs < victimSeen)) {
+                victim = i; victimRank = ri; victimSeen = i->second.lastSeenMs;
+            }
+        }
+        const int newRank = detailKeepRank(skimmer, pentool, name.length() > 0);
+        if (victimRank <= newRank) s_devices.erase(victim);
+        else                       insert = false;
+    }
+    if (insert) {
+        BleDeviceRecord r;
+        r.mac = mac;
+        r.name = name;
+        r.rssi = rssi;
+        r.isSkimmer = skimmer;
+        r.isPentool = pentool;
+        r.firstSeenMs = now;
+        r.lastSeenMs = now;
+        r.seenCount = 1;
+        s_devices.emplace(mac, r);
+    }
+}
+
 // ---- Scan callbacks ----
 class ScanCallbacks : public BLEAdvertisedDeviceCallbacks {
     void onResult(BLEAdvertisedDevice advertisedDevice) override {
@@ -101,56 +155,7 @@ class ScanCallbacks : public BLEAdvertisedDeviceCallbacks {
             s_hllBle.add(mac.c_str());
             if (skimmer) s_hllSkimmer.add(mac.c_str());
             if (pentool) s_hllPentool.add(mac.c_str());
-
-            const uint32_t now = millis();
-            auto it = s_devices.find(mac);
-            if (it != s_devices.end()) {
-                BleDeviceRecord& r = it->second;
-                r.rssi = rssi;
-                r.lastSeenMs = now;
-                r.seenCount++;
-                if (name.length()) r.name = name;     // keep the best name we've seen
-                if (skimmer) r.isSkimmer = true;       // sticky once flagged
-                if (pentool) r.isPentool = true;       // sticky once flagged
-            } else {
-                // New device. When the table is full, shed the lowest-priority
-                // entry (anonymous background BLE first, then least-recently
-                // seen) so flagged discoveries and named devices stay on the
-                // list regardless of age. If the newcomer itself is the
-                // lowest-priority candidate, drop it rather than bump something
-                // more useful off the list — this is how "several unnamed BLE"
-                // get kept out to make room for the detections that matter.
-                bool insert = true;
-                if (s_devices.size() >= BLE_DETAIL_CAP) {
-                    auto victim = s_devices.end();
-                    int victimRank = 99;
-                    uint32_t victimSeen = 0;
-                    for (auto i = s_devices.begin(); i != s_devices.end(); ++i) {
-                        const int ri = detailKeepRank(i->second.isSkimmer,
-                                                      i->second.isPentool,
-                                                      i->second.name.length() > 0);
-                        if (victim == s_devices.end() || ri < victimRank ||
-                            (ri == victimRank && i->second.lastSeenMs < victimSeen)) {
-                            victim = i; victimRank = ri; victimSeen = i->second.lastSeenMs;
-                        }
-                    }
-                    const int newRank = detailKeepRank(skimmer, pentool, name.length() > 0);
-                    if (victimRank <= newRank) s_devices.erase(victim);
-                    else                       insert = false;
-                }
-                if (insert) {
-                    BleDeviceRecord r;
-                    r.mac = mac;
-                    r.name = name;
-                    r.rssi = rssi;
-                    r.isSkimmer = skimmer;
-                    r.isPentool = pentool;
-                    r.firstSeenMs = now;
-                    r.lastSeenMs = now;
-                    r.seenCount = 1;
-                    s_devices.emplace(mac, r);
-                }
-            }
+            upsertDevice(mac, name, rssi, skimmer, pentool);
             xSemaphoreGive(s_sessionMutex);
         }
         s_bleCount++;
@@ -245,6 +250,26 @@ static uint32_t hllCount(const HyperLogLog& hll) {
 int ble_scanner_session_count()         { return (int)hllCount(s_hllBle); }
 int ble_scanner_session_skimmer_count() { return (int)hllCount(s_hllSkimmer); }
 int ble_scanner_session_pentool_count() { return (int)hllCount(s_hllPentool); }
+
+void ble_scanner_register_external(const String& mac, const String& name,
+                                   int rssi, bool skimmer, bool pentool) {
+    // A sighting that did not come from this chip's BLE scan — currently the
+    // classic-BT (BR/EDR) UART sidecar (a WROOM-32 next to the C5). Feeds the
+    // same session counters and device table as a native BLE hit so the
+    // dashboard shows classic-BT skimmer modules alongside BLE ones. The
+    // proximity alert (LED/screen) is driven by the caller (bt_uart).
+    if (!(skimmer || pentool)) return;
+    if (s_sessionMutex && xSemaphoreTake(s_sessionMutex, portMAX_DELAY) == pdTRUE) {
+        s_hllBle.add(mac.c_str());
+        if (skimmer) s_hllSkimmer.add(mac.c_str());
+        if (pentool) s_hllPentool.add(mac.c_str());
+        upsertDevice(mac, name, rssi, skimmer, pentool);
+        xSemaphoreGive(s_sessionMutex);
+    }
+    s_bleCount++;
+    if (skimmer) s_skimmerCount++;
+    if (pentool) s_pentoolCount++;
+}
 
 std::vector<BleDeviceRecord> ble_scanner_snapshot() {
     std::vector<BleDeviceRecord> out;
