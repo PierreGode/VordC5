@@ -155,11 +155,22 @@ needs the optional [ESP32-WROOM-32 add-on](#classic-bluetooth-brdr-via-esp32-wro
 - CC41, CC41A
 - SPP-CA, LINVOR
 
-**BLE-specific modules** (Bluetooth Low Energy skimmer hardware):
+**BLE-specific modules** — Bluetooth Low Energy, **detected natively by the C5,
+no add-on required**:
 - JDY family (JDY-08/09/16/17/18/19/23/24/25/30/31/33 and variants)
-- HM-10, HM-11 (TI CC2541 chipset, documented in skimmer kit teardowns)
+- HM-10, HM-11 (TI CC2541 chipset)
 - AT-09 (CC2541 clone)
 - MLT-BT05
+
+These BLE modules (HM-10, AT-09, JDY family — all CC2541/clone) show up in newer
+kits. They're less historically documented than the classic HC-05/06 SPP modules,
+but they're where skimmer hardware is trending: BLE is cheaper, lower-power, and
+ubiquitous in modern consumer gear, so a BLE skimmer hides far better in the
+ambient Bluetooth noise than a classic-BT one. This is exactly what Vord C5 is
+built for — it scans for them **continuously, out of the box, on a single board**,
+while the classic-BT SPP modules need the optional WROOM-32 nose. In other words:
+the C5 covers the emerging threat by default, and the add-on back-fills the legacy
+one.
 
 **Flipper Zero detection:**
 - BadKB (Flipper HID keyboard spoofing mode)
