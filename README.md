@@ -6,10 +6,9 @@
 Vord C5 is a dedicated BLE skimmer detector firmware for ESP32-C5 hardware. 
 
 > ℹ️ **Detection only — nothing else.** Vord C5 *only* listens for and flags
-> suspicious BLE advertisements. It does **not** connect to, interfere with,
-> jam, block, modify, or attack any device, and it does not transmit anything to
+> suspicious BLE advertisements. It does **not** connect to, interfere with, or attack any device, and it does not transmit anything to
 > the devices it detects. It is a passive, **educational** tool that simply tells
-> you a skimmer-class signature is nearby — what you do with that information is
+> you that you might have found a skimmer-class signature is nearby — what you do with that information is
 > up to you (see [What to do if you find a skimmer](docs/found-a-skimmer.md)). A
 > match is a *signal to be cautious*, not proof.
 
