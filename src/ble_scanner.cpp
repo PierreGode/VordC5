@@ -89,7 +89,7 @@ static inline int detailKeepRank(bool skimmer, bool pentool, bool named) {
 // scan callback and the classic-BT UART sidecar (ble_scanner_register_external)
 // so both follow the same LRU/priority eviction. Caller MUST hold s_sessionMutex.
 static void upsertDevice(const String& mac, const String& name, int rssi,
-                         bool skimmer, bool pentool) {
+                         bool skimmer, bool pentool, bool external) {
     const uint32_t now = millis();
     auto it = s_devices.find(mac);
     if (it != s_devices.end()) {
@@ -100,6 +100,7 @@ static void upsertDevice(const String& mac, const String& name, int rssi,
         if (name.length()) r.name = name;     // keep the best name we've seen
         if (skimmer) r.isSkimmer = true;       // sticky once flagged
         if (pentool) r.isPentool = true;       // sticky once flagged
+        if (external) r.external = true;       // sticky: seen at least once via the scout
         return;
     }
     // New device. When the table is full, shed the lowest-priority entry
@@ -132,6 +133,7 @@ static void upsertDevice(const String& mac, const String& name, int rssi,
         r.rssi = rssi;
         r.isSkimmer = skimmer;
         r.isPentool = pentool;
+        r.external = external;
         r.firstSeenMs = now;
         r.lastSeenMs = now;
         r.seenCount = 1;
@@ -155,7 +157,7 @@ class ScanCallbacks : public BLEAdvertisedDeviceCallbacks {
             s_hllBle.add(mac.c_str());
             if (skimmer) s_hllSkimmer.add(mac.c_str());
             if (pentool) s_hllPentool.add(mac.c_str());
-            upsertDevice(mac, name, rssi, skimmer, pentool);
+            upsertDevice(mac, name, rssi, skimmer, pentool, /*external=*/false);
             xSemaphoreGive(s_sessionMutex);
         }
         s_bleCount++;
@@ -263,7 +265,7 @@ void ble_scanner_register_external(const String& mac, const String& name,
         s_hllBle.add(mac.c_str());
         if (skimmer) s_hllSkimmer.add(mac.c_str());
         if (pentool) s_hllPentool.add(mac.c_str());
-        upsertDevice(mac, name, rssi, skimmer, pentool);
+        upsertDevice(mac, name, rssi, skimmer, pentool, /*external=*/true);
         xSemaphoreGive(s_sessionMutex);
     }
     s_bleCount++;

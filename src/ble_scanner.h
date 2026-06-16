@@ -19,6 +19,7 @@ struct BleDeviceRecord {
     int32_t  rssi;        // most recent RSSI
     bool     isSkimmer;   // matched a skimmer fingerprint at any point
     bool     isPentool;   // matched a pentest-tool fingerprint (Flipper etc.)
+    bool     external;    // sighting arrived via the classic-BT UART scout, not this chip's BLE scan
     uint32_t firstSeenMs;
     uint32_t lastSeenMs;
     uint32_t seenCount;   // advertisements observed

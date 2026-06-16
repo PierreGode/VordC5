@@ -110,6 +110,12 @@ void setup() {
 }
 
 void loop() {
+    // Heartbeat: one bare line per round (even with no hit) so the C5 can show
+    // "scout online" on its dashboard and you can confirm the wiring is live
+    // without a serial cable. The C5 stamps liveness on any well-formed VBT1
+    // line; PING carries no device, so it never trips the alarm.
+    LINK.println("VBT1|PING|0|00:00:00:00:00:00|");
+
     // Blocking classic inquiry with name resolution; returns the devices found
     // this round.
     BTScanResults* results = SerialBT.discover(INQUIRY_SECONDS * 1000);

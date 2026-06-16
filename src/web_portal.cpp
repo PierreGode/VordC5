@@ -4,6 +4,7 @@
 #include "scan_cycle.h"
 #include "runtime_config.h"
 #include "battery.h"
+#include "bt_uart.h"
 
 #include <WiFi.h>
 #include <WebServer.h>
@@ -50,6 +51,11 @@ static void handleApiStatus() {
     json += ",\"build\":";        appendJsonString(json, VORD_BUILD_ID);
     json += ",\"uptimeMs\":";     json += String(millis());
     json += ",\"scanning\":";     json += scan_cycle_is_running() ? "true" : "false";
+    // Classic-BT UART scout (WROOM-32) link status. scoutLastMs is the device
+    // clock (same base as uptimeMs) so the dashboard derives online/offline and
+    // age client-side. Both fields are absent of meaning unless scoutEnabled.
+    json += ",\"scoutEnabled\":"; json += bt_uart_enabled() ? "true" : "false";
+    json += ",\"scoutLastMs\":";  json += String(bt_uart_scout_last_seen_ms());
     json += ",\"liveBle\":";      json += String(ble_scanner_count());
     json += ",\"liveSkimmer\":";  json += String(ble_scanner_skimmer_count());
     json += ",\"livePentool\":";  json += String(ble_scanner_pentool_count());
@@ -93,6 +99,7 @@ static void handleApiDevices() {
         chunk += ",\"rssi\":";  chunk += String(d.rssi);
         chunk += ",\"skimmer\":"; chunk += d.isSkimmer ? "true" : "false";
         chunk += ",\"pentool\":"; chunk += d.isPentool ? "true" : "false";
+        chunk += ",\"external\":"; chunk += d.external ? "true" : "false";
         chunk += ",\"seen\":";  chunk += String(d.seenCount);
         chunk += ",\"firstMs\":"; chunk += String(d.firstSeenMs);
         chunk += ",\"lastMs\":";  chunk += String(d.lastSeenMs);
@@ -158,6 +165,7 @@ td:first-child{word-break:break-word}
 .tag{display:inline-block;padding:3px 9px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:.03em;background:rgba(242,95,58,.14);color:var(--accent)}
 .tag.g{background:rgba(13,163,177,.14);color:var(--accent-2)}
 .tag.p{background:rgba(124,58,237,.14);color:#7c3aed}
+.tag.c{background:rgba(79,98,82,.16);color:var(--muted);margin-left:5px}
 .foot{margin-top:16px;color:var(--muted);font-size:12px;text-align:center}
 /* Full-page detection alert: two 2cm vertical bands on the left and right
    edges that blink 5x at 1Hz when a new flagged device appears. Square corners
@@ -195,6 +203,7 @@ th:nth-child(2),td:nth-child(2){display:none}
 </div>
 <div class=meta>
 <span id=scan class="dot on">Scanning</span><br>
+<span id=scoutw style=display:none><span id=scout class="dot off">Scout</span><br></span>
 uptime <b id=up>-</b> &middot; heap <b id=heap>-</b><span id=batw style=display:none> &middot; batt <b id=bat>-</b></span>
 </div>
 </div>
@@ -246,6 +255,14 @@ async function tick(){
   $('sBle').textContent=st.sessionBle;$('sSkim').textContent=st.sessionSkimmer;$('sPent').textContent=st.sessionPentool;
   $('scan').textContent=st.scanning?'Scanning':'Paused';
   $('scan').className='dot '+(st.scanning?'on':'off');
+  // Classic-BT scout link: online if a VBT1 line (hit or heartbeat) arrived in
+  // the last 15s — ~3 heartbeat rounds, so one missed beat won't flip it.
+  if(st.scoutEnabled){
+   $('scoutw').style.display='';
+   const last=+st.scoutLastMs||0,age=st.uptimeMs-last;
+   if(last>0&&age<15000){$('scout').className='dot on';$('scout').textContent='Scout '+ago(age);}
+   else{$('scout').className='dot off';$('scout').textContent=last>0?'Scout offline':'Scout —';}
+  }
   $('up').textContent=fmtUp(st.uptimeMs);
   $('heap').textContent=Math.round(st.freeHeap/1024)+'KB';
   $('build').textContent=st.build;
@@ -254,7 +271,7 @@ async function tick(){
   // Skimmers first, pentools next, everything else after; newest-seen on top within each group.
   let rows=dv.devices.slice().sort((a,b)=>cat(a)-cat(b)||b.lastMs-a.lastMs);
   if(skimOnly)rows=rows.filter(d=>d.skimmer||d.pentool);
-  $('rows').innerHTML=rows.map(d=>{var p=rssiPct(d.rssi);return '<tr class="'+(d.skimmer?'skim':d.pentool?'pent':'')+'"><td>'+(esc(d.name)||'<span class=dim>(unnamed)</span>')+'<div class="mac-sub mono">'+esc(d.mac)+'</div></td><td class=mono>'+esc(d.mac)+'</td><td><span class=bar><i style="width:'+p+'%"></i></span><span class=dim>'+d.rssi+'</span></td><td>'+(d.skimmer?'<span class=tag>SKIMMER</span>':d.pentool?'<span class="tag p">PENTOOL</span>':'<span class="tag g">BLE</span>')+'</td><td class=dim>'+ago(now-d.lastMs)+'</td></tr>'}).join('')||'<tr><td colspan=5 class=dim>No devices yet&hellip;</td></tr>';
+  $('rows').innerHTML=rows.map(d=>{var p=rssiPct(d.rssi);return '<tr class="'+(d.skimmer?'skim':d.pentool?'pent':'')+'"><td>'+(esc(d.name)||'<span class=dim>(unnamed)</span>')+'<div class="mac-sub mono">'+esc(d.mac)+'</div></td><td class=mono>'+esc(d.mac)+'</td><td><span class=bar><i style="width:'+p+'%"></i></span><span class=dim>'+d.rssi+'</span></td><td>'+(d.skimmer?'<span class=tag>SKIMMER</span>':d.pentool?'<span class="tag p">PENTOOL</span>':'<span class="tag g">BLE</span>')+(d.external?'<span class="tag c">classic-BT</span>':'')+'</td><td class=dim>'+ago(now-d.lastMs)+'</td></tr>'}).join('')||'<tr><td colspan=5 class=dim>No devices yet&hellip;</td></tr>';
   $('count').textContent='('+rows.length+')';
  }catch(e){console.error(e)}
 }

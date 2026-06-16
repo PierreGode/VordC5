@@ -124,6 +124,11 @@ and, when a classic-BT skimmer module is in range, a line per hit:
 [VordBT] hit -> VBT1|SKIM|-55|aa:bb:cc:dd:ee:ff|HC-05
 ```
 
+Once the C5 is wired and flashed, its dashboard shows a **"Scout"** status pill
+(online/offline) driven by the per-round heartbeat, and classic-BT hits carry a
+**`classic-BT`** badge in the device list — so you can confirm the link is live
+even with no skimmer nearby. See [End-to-end test](#end-to-end-test) below.
+
 ---
 
 ## Enabling the receiver on the C5
@@ -149,10 +154,13 @@ sketch. See the `VORD_HAS_CLASSIC_BT_UART` block in
 
 ### End-to-end test
 
-With both boards wired and flashed, bring a classic-BT module (e.g. an HC-05) into
-range. The C5 should light its proximity LED (and flash the screen on boards that
-have one), and the device should appear in the web dashboard's device list flagged
-as a skimmer — the same as any BLE hit.
+With both boards wired and flashed, open the C5 dashboard (`http://192.168.4.1/`).
+Within ~5 s the **"Scout"** pill should turn green ("Scout 3s ago"); if it stays
+grey/"offline", recheck the `TX → IO23` wire and the shared `GND`. Then bring a
+classic-BT module (e.g. an HC-05) into range: the C5 should light its proximity LED
+(and flash the screen on boards that have one), and the device should appear in the
+device list flagged as a skimmer with a **`classic-BT`** badge — the same alarm as a
+BLE hit, just tagged by source.
 
 ---
 
@@ -162,13 +170,17 @@ as a skimmer — the same as any BLE hit.
 VBT1|<TYPE>|<RSSI>|<MAC>|<NAME>
 ```
 
-- `TYPE` — `SKIM` (skimmer module) or `PENT` (reserved for pentest gadgets)
-- `RSSI` — integer dBm, negative; best-effort from the classic inquiry
-- `MAC`  — `aa:bb:cc:dd:ee:ff`
-- `NAME` — device name (sender strips `|`, CR and LF)
+- `TYPE` — `SKIM` (skimmer module), `PENT` (reserved for pentest gadgets), or
+  `PING` (a liveness **heartbeat** sent once per inquiry round, carrying no device)
+- `RSSI` — integer dBm, negative; best-effort from the classic inquiry (`0` for `PING`)
+- `MAC`  — `aa:bb:cc:dd:ee:ff` (all-zero for `PING`)
+- `NAME` — device name (sender strips `|`, CR and LF; empty for `PING`)
 
-Lines that don't start with `VBT1|` are ignored by the C5, so USB-debug chatter
-or line noise can't trip the alarm.
+Any well-formed `VBT1|` line — hit **or** `PING` — refreshes the C5's scout-liveness
+timer, which drives the **"Scout"** status pill on the dashboard (online when a line
+arrived in the last ~15 s). Only `SKIM`/`PENT` register a device and fire the alert.
+Lines that don't start with `VBT1|` are ignored, so USB-debug chatter or line noise
+can't trip the alarm.
 
 ---
 
