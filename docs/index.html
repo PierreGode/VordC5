@@ -446,10 +446,18 @@
           <button class="bind" onclick="flashDevice('manifest-esp32c5.json')">Flash ESP32-C5 Dev Board</button>
           <button class="bind" onclick="flashDevice('manifest-xiao-esp32c5.json')">Flash Seeed XIAO ESP32-C5</button>
           <button class="bind" onclick="flashDevice('manifest-tdongle-c5.json')">Flash LilyGO T-Dongle-C5</button>
+          <button class="bind" onclick="flashDevice('manifest-wroom32.json')">Flash ESP32-WROOM-32 (classic-BT scout)</button>
         </div>
 
         <p class="note">
           If flashing fails, hold BOOT, tap RESET, release BOOT, then retry.
+        </p>
+
+        <p class="note">
+          The <strong>ESP32-WROOM-32</strong> build is the optional classic-Bluetooth
+          companion that sits beside a C5 board and forwards BR/EDR skimmer hits over
+          UART &mdash; it is not a standalone detector.
+          <a href="https://github.com/PierreGode/VordC5/blob/main/wroom32-classic-bt/README.md" target="_blank" rel="noopener">Wiring &amp; setup &rarr;</a>
         </p>
 
         <div class="safety-banner">

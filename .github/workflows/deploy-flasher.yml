@@ -69,6 +69,9 @@ jobs:
       - name: Build firmware (Seeed XIAO ESP32-C5)
         run: bash scripts/build-xiao.sh
 
+      - name: Build firmware (ESP32-WROOM-32 classic-BT scout)
+        run: bash scripts/build-wroom32.sh
+
       - name: Stage site
         run: |
           mkdir -p site/firmware
@@ -113,10 +116,23 @@ jobs:
             0xe000   "$BOOT_APP0_ARD" \
             0x10000  "$XIAO_DIR/VordC5.ino.bin"
 
+          # Classic ESP32-WROOM-32 scout (arduino-cli build). NOTE the classic
+          # ESP32 bootloader lives at 0x1000 (not 0x2000 like the C5 chips), and
+          # the WROOM-32 is a 4 MB / 40 MHz-flash part.
+          WROOM_DIR=wroom32-classic-bt/build/esp32.esp32.esp32
+          python -m esptool --chip esp32 merge_bin \
+            --output site/firmware/vord-wroom32.bin \
+            --flash_mode dio --flash_freq 40m --flash_size 4MB \
+            --target-offset 0x0 \
+            0x1000   "$WROOM_DIR/wroom32-classic-bt.ino.bootloader.bin" \
+            0x8000   "$WROOM_DIR/wroom32-classic-bt.ino.partitions.bin" \
+            0xe000   "$BOOT_APP0_ARD" \
+            0x10000  "$WROOM_DIR/wroom32-classic-bt.ino.bin"
+
           VERSION="$(date -u +%-m.%-d).${GITHUB_SHA::7}"
           echo "Version: $VERSION"
 
-          for m in manifest-esp32c5.json manifest-xiao-esp32c5.json manifest-tdongle-c5.json manifest.json; do
+          for m in manifest-esp32c5.json manifest-xiao-esp32c5.json manifest-tdongle-c5.json manifest-wroom32.json manifest.json; do
             jq --arg v "$VERSION" '.version = $v' "site/$m" > "site/$m.tmp"
             mv "site/$m.tmp" "site/$m"
           done

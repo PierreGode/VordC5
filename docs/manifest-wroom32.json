@@ -1,0 +1,14 @@
+{
+  "name": "Vord classic-BT scout (ESP32-WROOM-32)",
+  "version": "2.0",
+  "home_assistant_domain": "vordc5",
+  "new_install_prompt_erase": true,
+  "builds": [
+    {
+      "chipFamily": "ESP32",
+      "parts": [
+        { "path": "firmware/vord-wroom32.bin", "offset": 0 }
+      ]
+    }
+  ]
+}
