@@ -46,7 +46,7 @@ C5 to power the WROOM-32 from a single USB supply.
 
 | Signal              | WROOM-32 pad        | →   | ESP32-C5 dev board pad | Required? |
 | ------------------- | ------------------- | --- | ---------------------- | --------- |
-| UART data (BT→C5)   | **GPIO17** (`TX2`)  | →   | **GPIO20** (`IO20`)    | ✅ yes |
+| UART data (BT→C5)   | **GPIO17** (`TX2`)  | →   | **GPIO23** (`IO23`)    | ✅ yes |
 | Ground              | **GND**             | →   | **GND**                | ✅ yes (shared ground is critical) |
 | Power (optional)    | **5V** / **VIN**    | →   | **5V**                 | only if powering WROOM from the C5 |
 | UART data (C5→BT)   | **GPIO16** (`RX2`)  | →   | *(leave unconnected)*  | ❌ no — the C5 only listens |
@@ -54,7 +54,7 @@ C5 to power the WROOM-32 from a single USB supply.
 ```
    ESP32-WROOM-32                         ESP32-C5 Dev Board
   ┌───────────────┐                      ┌───────────────────┐
-  │  GPIO17 (TX2) ●├──────────────────────▶● GPIO20 (IO20)    │
+  │  GPIO17 (TX2) ●├──────────────────────▶● GPIO23 (IO23)    │
   │          GND  ●├──────────────────────●  GND              │
   │       5V/VIN  ●├ ─ ─ (optional) ─ ─ ─ ●  5V               │
   │  GPIO16 (RX2)  │   (unused)            │                   │
@@ -62,9 +62,11 @@ C5 to power the WROOM-32 from a single USB supply.
 ```
 
 **Pins to avoid on the C5 dev board** (already in use): `GPIO27` (onboard RGB
-LED), `GPIO6` (battery ADC), `GPIO13`/`GPIO14` (USB). `GPIO20` is free and is the
-firmware default. If you must use a different GPIO, pick another free,
-non-strapping pin and override `CLASSIC_BT_UART_RX_PIN` to match (see below).
+LED), `GPIO6` (battery ADC), `GPIO13`/`GPIO14` (USB), and the strapping pins
+`GPIO7`/`GPIO28`. The firmware default is **`GPIO23`**, a free header pin on the
+Waveshare ESP32-C5-WIFI6-KIT (`GPIO20` is *not* broken out on that board). If you
+wire to a different GPIO, pick another free, non-strapping pin and override
+`CLASSIC_BT_UART_RX_PIN` to match (see below).
 
 **Power options**
 - *Two USB cables* (simplest): power and flash each board from its own USB. Wire
@@ -126,18 +128,21 @@ and, when a classic-BT skimmer module is in range, a line per hit:
 
 ## Enabling the receiver on the C5
 
-The C5-side receiver is **compiled out by default** — nothing changes until you
-build with the flag. In [`../platformio.ini`](../platformio.ini), under
-`[env:esp32c5-dev]`, add to `build_flags`:
+The C5-side receiver is **enabled by default** in the `esp32c5-dev` build (and in
+the C5 firmware on the web flasher), listening on **`GPIO23`**. The flags live in
+[`../platformio.ini`](../platformio.ini) under `[env:esp32c5-dev]`:
 
 ```ini
 build_flags =
     ...
     -DVORD_HAS_CLASSIC_BT_UART=1
-    -DCLASSIC_BT_UART_RX_PIN=20
+    -DCLASSIC_BT_UART_RX_PIN=23
 ```
 
-Then rebuild and flash the C5 normally (`pio run -e esp32c5-dev`).
+Leaving it on is harmless when no WROOM-32 is wired — the C5 just listens on an
+idle pin. To wire to a different GPIO, change `CLASSIC_BT_UART_RX_PIN`; to turn
+the receiver off, set `-DVORD_HAS_CLASSIC_BT_UART=0`. Then rebuild and flash the
+C5 normally (`pio run -e esp32c5-dev`).
 `CLASSIC_BT_UART_BAUD` defaults to **115200** and must match `UART_BAUD` in the
 sketch. See the `VORD_HAS_CLASSIC_BT_UART` block in
 [`../src/config.h`](../src/config.h) for all knobs.
