@@ -102,6 +102,38 @@ static String sanitize(const String& in) {
     return out;
 }
 
+// ---- Matched-name cache --------------------------------------------------
+// Classic-BT inquiry reliably re-finds a device's ADDRESS every round, but the
+// remote-NAME request is flaky and only resolves on some rounds. Matching is
+// name-based, so without a cache we'd send a hit only on the rounds where the
+// name happened to resolve — leaving >10 s gaps that make the C5's proximity
+// LED/screen blink on/off for a module that never moved. So once a MAC's name
+// matches the skimmer list, remember it and keep reporting that MAC every round
+// it's still in the inquiry results, even when its name doesn't resolve again.
+// A device that leaves range simply stops appearing in the results, so it stops
+// being reported (the stale cache entry is harmless). Small ring buffer —
+// skimmer modules are few; round-robin eviction bounds the RAM.
+static const int NAME_CACHE_SIZE = 32;
+static String    s_cacheMac[NAME_CACHE_SIZE];
+static String    s_cacheName[NAME_CACHE_SIZE];
+static int       s_cacheNext = 0;   // next slot to overwrite when full
+
+static const String* recallName(const String& mac) {
+    for (int i = 0; i < NAME_CACHE_SIZE; i++) {
+        if (s_cacheMac[i] == mac) return &s_cacheName[i];
+    }
+    return nullptr;
+}
+
+static void rememberName(const String& mac, const String& name) {
+    for (int i = 0; i < NAME_CACHE_SIZE; i++) {
+        if (s_cacheMac[i] == mac) { s_cacheName[i] = name; return; }  // refresh
+    }
+    s_cacheMac[s_cacheNext]  = mac;
+    s_cacheName[s_cacheNext] = name;
+    s_cacheNext = (s_cacheNext + 1) % NAME_CACHE_SIZE;
+}
+
 void setup() {
     Serial.begin(115200);   // USB debug only
     LINK.begin(UART_BAUD, SERIAL_8N1, UART_RX_PIN, UART_TX_PIN);
@@ -126,16 +158,29 @@ void loop() {
             if (!dev) continue;
 
             String name = String(dev->getName().c_str());
-            if (!isSkimmerName(name)) continue;
+            String mac  = String(dev->getAddress().toString().c_str());
 
-            String mac = String(dev->getAddress().toString().c_str());
+            // Decide the name to report: a fresh match (remember it), or — when
+            // this round didn't resolve a name — the cached name from a previous
+            // round so an in-range module keeps alerting steadily. Anything we've
+            // never matched is skipped.
+            String reportName;
+            if (isSkimmerName(name)) {
+                rememberName(mac, name);
+                reportName = name;
+            } else if (const String* cached = recallName(mac)) {
+                reportName = *cached;
+            } else {
+                continue;   // not a known skimmer module
+            }
+
             int rssi = dev->getRSSI();
             // Classic-inquiry RSSI is best-effort and often unreported; send a
             // mid-range default so the C5's alert blinks at a sensible rate.
             if (rssi >= 0 || rssi < -120) rssi = -55;
 
             // Protocol: VBT1|TYPE|RSSI|MAC|NAME
-            String line = "VBT1|SKIM|" + String(rssi) + "|" + mac + "|" + sanitize(name);
+            String line = "VBT1|SKIM|" + String(rssi) + "|" + mac + "|" + sanitize(reportName);
             LINK.println(line);
             Serial.print("[VordBT] hit -> ");
             Serial.println(line);

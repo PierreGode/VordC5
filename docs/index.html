@@ -476,7 +476,7 @@
 
       <section class="panel">
         <h2>Serial Monitor</h2>
-        <p>Watch your board's live serial output &mdash; boot info, the AP address, and the heap-health log. Works on any flashed board; close the flash dialog first so the serial port is free.</p>
+        <p>Watch your board's live serial output &mdash; boot info, the AP address, and the heap-health log. If a WROOM-32 classic-BT scout is wired to the C5, its traffic is relayed through the C5 and tagged <code>[wroom]</code>; use the <strong>Source</strong> filter to view C5 only, the scout only, or both. Works on any flashed board; close the flash dialog first so the serial port is free.</p>
 
         <div class="mon-controls">
           <button id="mon-connect" class="bind">Connect Serial Monitor</button>
@@ -487,6 +487,13 @@
               <option value="115200" selected>115200</option>
               <option value="460800">460800</option>
               <option value="921600">921600</option>
+            </select>
+          </label>
+          <label class="mon-status">Source
+            <select id="mon-filter" class="mon-baud">
+              <option value="all" selected>C5 + WROOM-32</option>
+              <option value="c5">C5 only</option>
+              <option value="wroom">WROOM-32 only</option>
             </select>
           </label>
           <span id="mon-status" class="mon-status">Not connected</span>

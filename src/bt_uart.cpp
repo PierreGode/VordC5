@@ -69,7 +69,16 @@ static void btUartTask(void* param) {
         while (s_link.available()) {
             const char c = (char)s_link.read();
             if (c == '\n' || c == '\r') {
-                if (line.length()) { handleLine(line); line = ""; }
+                if (line.length()) {
+                    // Relay the raw scout line to the USB-CDC console, tagged
+                    // [wroom], so the web serial terminal can show ALL WROOM-32
+                    // traffic coming through the C5 — hits and heartbeats alike —
+                    // and its source filter can separate it from the C5's own log.
+                    Serial.print("[wroom] ");
+                    Serial.println(line);
+                    handleLine(line);
+                    line = "";
+                }
             } else if (line.length() < 160) {
                 line += c;
             } else {

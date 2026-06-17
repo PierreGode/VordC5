@@ -205,7 +205,11 @@ static const char* PENTOOL_NAMES_DEFAULT[] = {
 #define SKIMMER_LED_FAST_MS     70     // white gap between color pulses, closest range
 #define SKIMMER_LED_SLOW_MS   1000     // white gap between color pulses, farthest range
 #define SKIMMER_LED_PULSE_MS   150     // duration of each color pulse
-#define SKIMMER_LED_HOLD_MS  10000     // keep blinking this long after the last sighting
+#define SKIMMER_LED_HOLD_MS  25000     // keep blinking this long after the last sighting
+// 25 s (not 10 s) so a stationary module whose detection drops out briefly —
+// classic-BT inquiry missing a few name/address rounds, or a BLE name riding
+// only in an occasional scan response — doesn't make the LED cycle on/off. The
+// WROOM name cache keeps classic-BT hits steady ~every 5 s; this bridges the rest.
 #define SKIMMER_LED_TASK_STACK 2048
 
 // Proximity COLOR for the non-white blink phase. The white phase always blinks;
