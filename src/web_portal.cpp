@@ -138,6 +138,7 @@ h1{margin:10px 0 0;font-family:'Sora',system-ui,sans-serif;font-size:clamp(30px,
 .dot{display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
 .dot:before{content:"";width:9px;height:9px;border-radius:999px;background:#9aa}
 .dot.on:before{background:var(--accent-2);box-shadow:0 0 0 4px rgba(13,163,177,.18)}
+.dot.up:before{background:#2b6fff;box-shadow:0 0 0 4px rgba(43,111,255,.18)}
 .dot.off:before{background:var(--accent)}
 .stats{margin-top:20px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 .stat{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:14px 16px;box-shadow:0 12px 30px rgba(20,30,22,.06)}
@@ -165,7 +166,8 @@ td:first-child{word-break:break-word}
 .tag{display:inline-block;padding:3px 9px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:.03em;background:rgba(242,95,58,.14);color:var(--accent)}
 .tag.g{background:rgba(13,163,177,.14);color:var(--accent-2)}
 .tag.p{background:rgba(124,58,237,.14);color:#7c3aed}
-.tag.c{background:rgba(79,98,82,.16);color:var(--muted);margin-left:5px}
+.tag.c{background:rgba(43,111,255,.16);color:#2b6fff;margin-left:5px}
+#bluecount{color:#2b6fff;font-size:13px;font-weight:600;margin-left:6px}
 .foot{margin-top:16px;color:var(--muted);font-size:12px;text-align:center}
 /* Full-page detection alert: two 2cm vertical bands on the left and right
    edges that blink 5x at 1Hz when a new flagged device appears. Square corners
@@ -219,7 +221,7 @@ uptime <b id=up>-</b> &middot; heap <b id=heap>-</b><span id=batw style=display:
 
 <section class=panel>
 <div class=bar-head>
-<h2>Devices <span class=dim id=count></span></h2>
+<h2>Devices <span class=dim id=count></span><span id=bluecount></span></h2>
 <label class=toggle><input type=checkbox id=skimOnly> Flagged only</label>
 </div>
 <table><thead><tr><th>Name</th><th>MAC</th><th>RSSI</th><th>Type</th><th>Last seen</th></tr></thead>
@@ -255,13 +257,15 @@ async function tick(){
   $('sBle').textContent=st.sessionBle;$('sSkim').textContent=st.sessionSkimmer;$('sPent').textContent=st.sessionPentool;
   $('scan').textContent=st.scanning?'Scanning':'Paused';
   $('scan').className='dot '+(st.scanning?'on':'off');
-  // Classic-BT scout link: online if a VBT1 line (hit or heartbeat) arrived in
-  // the last 15s — ~3 heartbeat rounds, so one missed beat won't flip it.
+  // Classic-BT scout link: blue ("up") once the WROOM-32 has sent at least one
+  // valid VBT1 line — link established. It stays blue thereafter (a dropped
+  // heartbeat won't flip it), per the link-up indicator. Grey until first
+  // contact. When fresh (<15s) we append the age so liveness is still visible.
   if(st.scoutEnabled){
    $('scoutw').style.display='';
    const last=+st.scoutLastMs||0,age=st.uptimeMs-last;
-   if(last>0&&age<15000){$('scout').className='dot on';$('scout').textContent='Scout '+ago(age);}
-   else{$('scout').className='dot off';$('scout').textContent=last>0?'Scout offline':'Scout —';}
+   if(last>0){$('scout').className='dot up';$('scout').textContent='Scout up'+(age<15000?' '+ago(age):'');}
+   else{$('scout').className='dot off';$('scout').textContent='Scout —';}
   }
   $('up').textContent=fmtUp(st.uptimeMs);
   $('heap').textContent=Math.round(st.freeHeap/1024)+'KB';
@@ -273,6 +277,10 @@ async function tick(){
   if(skimOnly)rows=rows.filter(d=>d.skimmer||d.pentool);
   $('rows').innerHTML=rows.map(d=>{var p=rssiPct(d.rssi);return '<tr class="'+(d.skimmer?'skim':d.pentool?'pent':'')+'"><td>'+(esc(d.name)||'<span class=dim>(unnamed)</span>')+'<div class="mac-sub mono">'+esc(d.mac)+'</div></td><td class=mono>'+esc(d.mac)+'</td><td><span class=bar><i style="width:'+p+'%"></i></span><span class=dim>'+d.rssi+'</span></td><td>'+(d.skimmer?'<span class=tag>SKIMMER</span>':d.pentool?'<span class="tag p">PENTOOL</span>':'<span class="tag g">BLE</span>')+(d.external?'<span class="tag c">classic-BT</span>':'')+'</td><td class=dim>'+ago(now-d.lastMs)+'</td></tr>'}).join('')||'<tr><td colspan=5 class=dim>No devices yet&hellip;</td></tr>';
   $('count').textContent='('+rows.length+')';
+  // "blue" = sightings relayed by the WROOM-32 classic-BT scout (external flag).
+  // Counted client-side from the device list, so it costs the C5 no extra heap.
+  const nBlue=dv.devices.filter(d=>d.external).length;
+  $('bluecount').textContent=nBlue?'· '+nBlue+' blue':'';
  }catch(e){console.error(e)}
 }
 $('skimOnly').addEventListener('change',function(e){skimOnly=e.target.checked;tick()});
