@@ -159,8 +159,11 @@ static const char* PENTOOL_NAMES_DEFAULT[] = {
     "Flipper",    // Flipper Zero ("Flipper ...", "xFlipper ...")
     "BadKB",      // Flipper HID keyboard spoofing
     "BadUSB",
-    "MNTM",       // Momentum firmware ("MNTM-FW")
-    "Momentum",
+    "MNTM",       // Momentum firmware ("MNTM-FW"). NB: do NOT add the plain word
+                  // "Momentum" here — as a substring it matches consumer audio
+                  // gear (e.g. Sennheiser "MOMENTUM 4" headsets) and false-flags
+                  // them as pentools. "MNTM" is the firmware's own ID and is not
+                  // a substring of "MOMENTUM".
 
     nullptr
 };
