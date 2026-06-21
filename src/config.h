@@ -145,6 +145,10 @@ static const char* SKIMMER_NAMES_DEFAULT[] = {
     "SPP-CA",
     "LINVOR",
     "MLT-BT05",
+    // FREE2MOVE — classic-BT SPP module on BlueSleuth's default-skimmer name
+    // list (alongside the canonical HC-03/05/06/08). BR/EDR, so it can only be
+    // seen via the WROOM-32 classic-BT scout, not the C5's own BLE scan.
+    "FREE2MOVE",
 
     nullptr
 };

@@ -58,6 +58,7 @@ static const char* SKIMMER_NAMES[] = {
     "HM-10", "HM-11",
     "AT-09",
     "SPP-CA", "LINVOR", "MLT-BT05",
+    "FREE2MOVE",   // BlueSleuth default-skimmer name list (classic-BT SPP)
     nullptr
 };
 

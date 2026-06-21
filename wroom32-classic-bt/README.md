@@ -2,7 +2,7 @@
 
 The ESP32-C5 radio only scans **BLE (LE)** advertisements. Several skimmer modules
 in the C5's fingerprint list are **classic Bluetooth (BR/EDR)** parts — HC-03/04/05/06/08,
-CC41, SPP-CA, LINVOR, MLT-BT05 — and can **never** match a BLE scan.
+CC41, SPP-CA, LINVOR, MLT-BT05, FREE2MOVE — and can **never** match a BLE scan.
 
 This add-on bolts a classic-BT-capable **ESP32-WROOM-32** next to the C5. It runs a
 classic-BT inquiry, matches discovered device names against the **same** skimmer

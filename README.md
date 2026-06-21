@@ -153,7 +153,7 @@ needs the optional [ESP32-WROOM-32 add-on](#classic-bluetooth-brdr-via-esp32-wro
 - HC-03, HC-04, HC-05, HC-06, HC-08
 - BT-04, BT-05, BT-06, BT-08
 - CC41, CC41A
-- SPP-CA, LINVOR
+- SPP-CA, LINVOR, FREE2MOVE
 
 **BLE-specific modules** — Bluetooth Low Energy, **detected natively by the C5,
 no add-on required**:
@@ -179,11 +179,28 @@ one.
 Matching is normalized and case-insensitive, with tolerance for separators (dash, underscore, dot, space).
 So `HC-05`, `HC05`, and `hc_05` all match. The JDY prefix rule catches all JDY-xx variants automatically.
 
+The HC-03/05/06/08 + FREE2MOVE set is the classic default-name list documented in
+the skimmer-detection literature (SparkFun/Seidle 2017, BlueSleuth); the rest
+extend coverage to the BLE modules where skimmer hardware is trending.
+
+### Limitations — what a clean scan means
+
+Name-fingerprint matching only catches modules running their **factory-default
+name**. It will **not** flag:
+
+- a module that has been **renamed** or made non-discoverable,
+- a skimmer that isn't Bluetooth at all (GSM/cellular, magnetic-tap, deep-insert),
+- any module whose name isn't in the list above.
+
+So a clean scan means *"no default-config Bluetooth skimmer is advertising right
+now"* — **not** *"this pump/ATM is safe."* A match is a signal to be cautious; a
+non-match is **not** a clean bill of health.
+
 ## Classic Bluetooth (BR/EDR) via ESP32-WROOM-32 add-on
 
 The ESP32-C5 radio only scans **BLE (LE)** advertisements. Several skimmer
 modules in the fingerprint list above — **HC-03/04/05/06/08, CC41, SPP-CA,
-LINVOR, MLT-BT05** — are **classic Bluetooth (BR/EDR)** parts that *never* appear
+LINVOR, MLT-BT05, FREE2MOVE** — are **classic Bluetooth (BR/EDR)** parts that *never* appear
 in a BLE scan, so the C5 cannot detect them by itself.
 
 To cover them, an optional **ESP32-WROOM-32** runs alongside the C5 as a
