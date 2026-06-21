@@ -1,6 +1,8 @@
 #include "scan_cycle.h"
 #include "ble_scanner.h"
 #include "config.h"
+#include "battery.h"
+#include "skimmer_led.h"
 
 static volatile bool s_running = true;
 
@@ -25,6 +27,7 @@ void scan_cycle_task(void* param) {
     bool scanning = false;
     uint32_t lastRefresh = 0;
     uint32_t lastHeapLog = 0;
+    uint32_t lastBattWarn = 0;
 
     for (;;) {
         if (!s_running) {
@@ -58,6 +61,19 @@ void scan_cycle_task(void* param) {
             Serial.printf("[heap] free=%u  minFree=%u\n",
                           (unsigned)ESP.getFreeHeap(), (unsigned)ESP.getMinFreeHeap());
             lastHeapLog = millis();
+        }
+
+        // Low-battery warning: a short LED blink every BATT_WARN_INTERVAL_MS once
+        // the pack drops to/below BATT_LOW_PCT, so a field user notices without the
+        // dashboard. A reading below BATT_PRESENT_MV means monitoring is off or no
+        // battery is fitted (the divider reads ~0 mV), so a USB-only unit stays
+        // silent; skimmer_led_flash() is also a no-op when the LED is compiled out.
+        if (millis() - lastBattWarn >= BATT_WARN_INTERVAL_MS) {
+            const int mv = battery_millivolts();
+            if (mv >= BATT_PRESENT_MV && battery_percent(mv) <= BATT_LOW_PCT) {
+                skimmer_led_flash(40, 0, 40, 2);   // dim magenta x2 — distinct from proximity colors
+            }
+            lastBattWarn = millis();
         }
 
         vTaskDelay(pdMS_TO_TICKS(100));

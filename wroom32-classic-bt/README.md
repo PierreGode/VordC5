@@ -19,8 +19,9 @@ HC-05-class modules — there's no firmware-only substitute.
 
 This is the primary, intended build, and it's what the **Vord carrier PCB**
 integrates: a Seeed XIAO ESP32-C5 (the brain), a WROOM-32 module (the classic-BT
-nose), a WS2812/SK6812 proximity LED, and a 3.3 V regulator for the WROOM, all on
-one board.
+nose), a WS2812/SK6812 proximity LED, and an optional LiPo, all on one board — it
+runs from USB-C or the battery interchangeably, with the XIAO charging the cell and
+switching sources automatically.
 
 | Part | Role |
 | ---- | ---- |
@@ -46,28 +47,25 @@ Each row is one net — the listed pins all tie together:
                   DIN      VCC      GND
                    │        │        │
         ┌──────────┴────────┴────────┴────────┐
-        │  D0       3V3            GND      5V │  ← USB-C (power + flash)
+        │  D0       3V3            GND         │  ← USB-C: power + charge + flash
         │               XIAO ESP32-C5         │
-        │  D2                          GND    │
-        └────┬─────────────────────┬───────┬──┘
-             │ UART data           │ GND   │ 5V (VBUS)
-             │                     │       ▼
-             │                     │   ┌──────────────────┐
-             │                     │   │ VIN         VOUT │──┐ 3.3 V
-             │                     │   │   AMS1117-3.3    │  │
-             │                     │   │ GND  (5V→3.3V)   │  │
-             │                     │   └───────┬──────────┘  │
-             │                     │           │ GND         │
-        ┌────┴─────────────────────┴───────────┴─────────────┴─┐
-        │ TX2 (GPIO17)            GND                      3V3  │
-        │                  ESP32-WROOM-32                       │
-        └────────────────────────────────────────────────────────┘
+        │  D2              GND          3V3    │  ← LiPo on BAT+ / BAT- pads
+        └────┬──────────────┬───────────┬─────┘
+             │ UART data    │ GND        │ 3V3  (live on USB *or* battery)
+             │              │            │
+             │              │            ├──┤├──► GND   ≥470 µF bulk cap
+             │              │            │
+        ┌────┴──────────────┴────────────┴─────┐
+        │ TX2 (GPIO17)    GND          3V3      │
+        │             ESP32-WROOM-32            │
+        └─────────────────────────────────────────┘
 ```
 
-Power path: XIAO **`5V`** (USB VBUS) → regulator **VIN**; regulator **VOUT** →
-WROOM **`3V3`**; the LED runs off the XIAO's **`3V3`**; one common **GND**. The
-regulator (`U2`) takes the WROOM's 250–500 mA TX bursts so they never reach the
-XIAO's LDO — see [Power](#power) for the alternatives.
+Power path: the XIAO runs from **USB-C or the LiPo** and switches automatically
+(charging the cell on USB). Its **`3V3`** rail is live either way and feeds both
+the LED and the WROOM's `3V3`; a **≥470 µF bulk cap** at the WROOM rides out its
+250–500 mA TX bursts. One common **GND**. See [Power](#power) for the buck-boost
+alternative that fully isolates the WROOM.
 
 `D2`/GPIO25 is a free, non-strapping XIAO pad: it avoids the LED (`D0`/GPIO1), I²C
 (`D4`/`D5`), SPI (`D8`–`D10`), the `D6`/`D7` UART0 debug pads, USB (GPIO13/14) and
@@ -76,30 +74,37 @@ listens.
 
 ### Power
 
-A WROOM-32 is a *second radio*: ~80–160 mA average but **250–500 mA TX bursts**
-during inquiry, landing on top of the XIAO's own WiFi/BLE peaks. Low, steady loads
-(a GPS, an OLED) run straight off the XIAO's `3V3` — the WROOM just needs headroom
-for its spikes. The carrier PCB powers it for the peaks:
+The unit runs from **USB-C or a LiPo**, interchangeably. The XIAO ESP32-C5 has
+onboard charging and an automatic power-path: plugged in it runs from USB and
+charges the cell; unplugged it runs from the battery. You add nothing for that —
+just wire a LiPo to the XIAO's **BAT+ / BAT-** pads. (The firmware already reads
+and displays the battery level on the dashboard.)
 
-```
-USB-C (XIAO) ─VBUS 5V─┬─> XIAO 5V pad ──(XIAO LDO)──> XIAO 3V3 ──> LED VCC
-                      └─> U2 reg (5V→3.3V, ≥1A) ─────> WROOM 3V3
-```
+The only real question is the WROOM's 3.3 V. A WROOM-32 is a *second radio* —
+~80–160 mA average with **250–500 mA TX bursts** during inquiry. Feed it from the
+XIAO's **`3V3`** rail — the only rail live on *both* sources (the `5V` pad is dead
+on battery) — with a **≥470 µF (ideally 1000 µF) bulk cap** at the WROOM's `3V3`
+pin to absorb the bursts. The LED shares that same `3V3`. One common **GND**.
 
-`U2` = AMS1117-3.3 (simple) or a small buck (MP1584 / TPS62, runs cooler). This
-keeps the WROOM's bursts off the XIAO's LDO so the XIAO's own WiFi stays rock-steady.
+> The XIAO's regulator now carries both radios, so give it copper + headroom. On
+> USB it drops 5 V→3.3 V for both and runs warm; on battery the drop is small and
+> it stays cool.
 
-Powering options, best first:
-1. **XIAO `5V` → dedicated 3.3 V regulator → WROOM** (what the PCB does).
-2. **XIAO `5V` → a WROOM *dev board's* VIN/5V** — its onboard regulator absorbs the bursts.
-3. **XIAO `3V3` → WROOM + a ≥470 µF (ideally 1000 µF) bulk cap** at the WROOM's `3V3` pin — cheapest; leans on the XIAO LDO's headroom.
+**Robust alternative — isolate the WROOM.** A **buck-boost** (e.g. TPS63020,
+3.0–5.5 V input) fed from a USB-or-battery rail gives the WROOM its own clean 3.3 V
+at any battery voltage, keeping its bursts entirely off the XIAO's LDO. More parts,
+but the "do it right" version.
 
-Never feed 5 V to a bare module's `3V3` pin (it has no regulator). Always share **GND**.
+**USB-only build?** If it never runs on battery, simplest is `XIAO 5V →
+AMS1117-3.3 → WROOM`. That path can't do battery (no 5 V rail, and an LDO can't
+drop a LiPo to 3.3 V across its discharge), so it's out for dual-source.
+
+Never feed 5 V to a bare module's `3V3` pin. Always share **GND**.
 
 ### Module support parts (bare WROOM module)
 
 A bare module has no regulator, no boot circuit — the carrier provides them:
-- **3V3:** 10 µF ‖ 0.1 µF decoupling (plus the bulk cap if sharing the XIAO LDO).
+- **3V3:** 10 µF ‖ 0.1 µF decoupling **plus the ≥470 µF bulk cap** (the WROOM is fed from the XIAO's `3V3` — see [Power](#power)).
 - **EN:** 10 kΩ to 3V3 **plus** 0.1–1 µF to GND (clean power-on reset).
 - **GPIO0:** 10 kΩ to 3V3.
 - **Strapping — leave alone:** don't pull `GPIO12` (MTDI) high (must be low for 3.3 V flash), nor `GPIO2` / `GPIO15`. Only `GPIO17` (non-strapping) is used.

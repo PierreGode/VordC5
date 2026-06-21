@@ -85,6 +85,23 @@
 #define VBAT_REFRESH_MS 5000
 #endif
 
+// On-device low-battery warning. When the pack is at/below BATT_LOW_PCT, the
+// proximity LED gives a short blink every BATT_WARN_INTERVAL_MS so you notice in
+// the field without the dashboard open. Self-disables when battery monitoring
+// (VBAT_ADC_PIN<0) or the LED (VORD_HAS_SKIMMER_LED=0) is compiled out.
+#ifndef BATT_LOW_PCT
+#define BATT_LOW_PCT 15
+#endif
+#ifndef BATT_WARN_INTERVAL_MS
+#define BATT_WARN_INTERVAL_MS 30000
+#endif
+// A reading below this means no battery is fitted (the divider reads ~0 mV with
+// the BAT pad open), so the warning is skipped — that's how a USB-only unit stays
+// silent even with monitoring compiled in. A real 1S LiPo never sits this low.
+#ifndef BATT_PRESENT_MV
+#define BATT_PRESENT_MV 2500
+#endif
+
 // ----- BLE scan timing (coexistence-critical) -----
 // WiFi (AP + web) and BLE time-share the single radio. The coexistence
 // arbiter can only give WiFi the gaps between scan windows, so the window
