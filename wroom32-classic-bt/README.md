@@ -74,6 +74,27 @@ wire to a different GPIO, pick another free, non-strapping pin and override
 - *One USB supply*: power the C5 over USB, then feed the WROOM-32 from the C5's
   `5V` pin (`5V → 5V/VIN`) plus the shared `GND`.
 
+### If your main board is the Seeed XIAO ESP32-C5
+
+It works too — it's just cramped. Map the link to XIAO pads instead:
+
+| Signal              | WROOM-32 pad        | →   | XIAO ESP32-C5 pad      | Required? |
+| ------------------- | ------------------- | --- | ---------------------- | --------- |
+| UART data (BT→C5)   | **GPIO17** (`TX2`)  | →   | **`D2`** (GPIO25)      | ✅ yes |
+| Ground              | **GND**             | →   | **GND**                | ✅ yes (shared) |
+
+`D2`/GPIO25 is what the XIAO build listens on by default — `scripts/build-xiao.sh`
+now compiles the receiver in with `-DCLASSIC_BT_UART_RX_PIN=25`. It's a free,
+non-strapping pad that avoids the proximity LED (`D0`/GPIO1), I²C (`D4`/`D5`),
+SPI (`D8`–`D10`), the `D6`/`D7` UART0 debug pads, USB (GPIO13/14) and the battery
+pins (GPIO6/26). To use a different pad:
+`XIAO_CLASSIC_BT_RX_GPIO=<gpio> bash scripts/build-xiao.sh` (or `=off` to drop it).
+
+> ⚠️ **Power:** don't run a WROOM-32 doing continuous classic-BT inquiry off the
+> XIAO's small 3V3 LDO — the BT TX current peaks can brown out the XIAO and drop
+> its AP. Give the WROOM its own supply (its own USB, or a separate 3V3/5V
+> source) and share **only GND** with the XIAO.
+
 ---
 
 ## Flashing the WROOM-32

@@ -47,6 +47,22 @@ if [[ -n "${XIAO_SKIMMER_LED_GPIO:-}" ]]; then
   SKIMMER_LED_FLAG=" -DSKIMMER_LED_PIN=${XIAO_SKIMMER_LED_GPIO}"
 fi
 
+# Classic-Bluetooth (BR/EDR) scout receiver. A WROOM-32 running
+# wroom32-classic-bt/ forwards classic-BT skimmer hits to the XIAO over UART;
+# the XIAO listens on CLASSIC_BT_UART_RX_PIN and fires the same alert as a BLE
+# hit. Default RX = D2 (GPIO25): a free, non-strapping XIAO pad that avoids the
+# proximity LED (D0/GPIO1), I2C (D4/D5), SPI (D8-D10), the D6/D7 UART0 debug
+# pads (GPIO11/12), USB (GPIO13/14) and the battery pins (GPIO6/26). Wire
+# WROOM-32 GPIO17 (TX2) -> XIAO D2 plus a shared GND. Harmless when nothing is
+# wired (the pin just idles). Set XIAO_CLASSIC_BT_RX_GPIO=<gpio> for another
+# pin, or XIAO_CLASSIC_BT_RX_GPIO=off to compile the receiver out.
+CLASSIC_BT_FLAG=" -DVORD_HAS_CLASSIC_BT_UART=1 -DCLASSIC_BT_UART_RX_PIN=25"
+if [[ "${XIAO_CLASSIC_BT_RX_GPIO:-}" == "off" ]]; then
+  CLASSIC_BT_FLAG=""
+elif [[ -n "${XIAO_CLASSIC_BT_RX_GPIO:-}" ]]; then
+  CLASSIC_BT_FLAG=" -DVORD_HAS_CLASSIC_BT_UART=1 -DCLASSIC_BT_UART_RX_PIN=${XIAO_CLASSIC_BT_RX_GPIO}"
+fi
+
 # Build identifier (UTC date + git short SHA), matching scripts/version.py and
 # the flasher's docs/version.json, so the XIAO's AP dashboard shows the same
 # build number. Same format as deploy-flasher.yml; "nogit" without a checkout.
@@ -75,7 +91,7 @@ echo "==> Compiling for $FQBN"
 # left unset: this firmware fits in internal SRAM without PSRAM requirements.
 "$ARDUINO_CLI_BIN" compile \
   --fqbn "$FQBN" \
-  --build-property "compiler.cpp.extra_flags=-DVORD_BOARD_C5=1 -DVORD_BOARD_XIAO_C5=1 -DVORD_HAS_DISPLAY=0 -DVORD_HAS_GPS=0 -DVORD_HAS_SKIMMER_LED=1 -DVORD_HAS_MODE_BUTTON=0 -DCORE_DEBUG_LEVEL=0${SKIMMER_LED_FLAG}${BUILD_FLAG}" \
+  --build-property "compiler.cpp.extra_flags=-DVORD_BOARD_C5=1 -DVORD_BOARD_XIAO_C5=1 -DVORD_HAS_DISPLAY=0 -DVORD_HAS_GPS=0 -DVORD_HAS_SKIMMER_LED=1 -DVORD_HAS_MODE_BUTTON=0 -DCORE_DEBUG_LEVEL=0${SKIMMER_LED_FLAG}${CLASSIC_BT_FLAG}${BUILD_FLAG}" \
   --export-binaries \
   "$SKETCH_DIR"
 
