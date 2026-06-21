@@ -42,20 +42,32 @@ Each row is one net — the listed pins all tie together:
 | 4 | **D2** (GPIO25) | **TX2** (GPIO17) | — | classic-BT data → C5 |
 
 ```
-            WS2812 / SK6812 pixel
-            DIN     VCC     GND
-             │       │       │
-        ┌────┴───────┴───────┴────┐
-        │ D0        3V3      GND   │
-        │            XIAO ESP32-C5 │   ← USB-C power/flash
-        │ D2                  GND  │
-        └────┬────────────────┬────┘
-             │ UART           │ GND
-        ┌────┴────────────────┴────┐
-        │ TX2 (GPIO17)        GND   │
-        │        ESP32-WROOM-32     │   ← own 3.3 V (see Power)
-        └───────────────────────────┘
+                  WS2812 / SK6812 pixel
+                  DIN      VCC      GND
+                   │        │        │
+        ┌──────────┴────────┴────────┴────────┐
+        │  D0       3V3            GND      5V │  ← USB-C (power + flash)
+        │               XIAO ESP32-C5         │
+        │  D2                          GND    │
+        └────┬─────────────────────┬───────┬──┘
+             │ UART data           │ GND   │ 5V (VBUS)
+             │                     │       ▼
+             │                     │   ┌──────────────────┐
+             │                     │   │ VIN         VOUT │──┐ 3.3 V
+             │                     │   │   AMS1117-3.3    │  │
+             │                     │   │ GND  (5V→3.3V)   │  │
+             │                     │   └───────┬──────────┘  │
+             │                     │           │ GND         │
+        ┌────┴─────────────────────┴───────────┴─────────────┴─┐
+        │ TX2 (GPIO17)            GND                      3V3  │
+        │                  ESP32-WROOM-32                       │
+        └────────────────────────────────────────────────────────┘
 ```
+
+Power path: XIAO **`5V`** (USB VBUS) → regulator **VIN**; regulator **VOUT** →
+WROOM **`3V3`**; the LED runs off the XIAO's **`3V3`**; one common **GND**. The
+regulator (`U2`) takes the WROOM's 250–500 mA TX bursts so they never reach the
+XIAO's LDO — see [Power](#power) for the alternatives.
 
 `D2`/GPIO25 is a free, non-strapping XIAO pad: it avoids the LED (`D0`/GPIO1), I²C
 (`D4`/`D5`), SPI (`D8`–`D10`), the `D6`/`D7` UART0 debug pads, USB (GPIO13/14) and
