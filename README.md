@@ -206,13 +206,14 @@ GPIO/power pads to solder to.
 
 | WROOM-32         |     | ESP32-C5 Dev Board                 | Required? |
 | ---------------- | --- | ---------------------------------- | --------- |
-| TX2 (GPIO17)     | →   | GPIO20 (`CLASSIC_BT_UART_RX_PIN`)  | ✅ |
+| TX2 (GPIO17)     | →   | GPIO23 (`CLASSIC_BT_UART_RX_PIN`)  | ✅ |
 | GND              | →   | GND **(shared ground)**            | ✅ |
 | 5V (VIN)         | →   | 5V (only if powering WROOM from C5)| optional |
 | RX2 (GPIO16)     | →   | *(unconnected; the C5 only listens)* | ❌ |
 
-`GPIO20` is free on the dev board (avoid `GPIO27` = LED, `GPIO6` = battery ADC,
-`GPIO13/14` = USB).
+`GPIO23` is a free header pin on the Waveshare C5 dev board (`GPIO20` is *not*
+broken out there). Avoid `GPIO27` = LED, `GPIO6` = battery ADC, `GPIO13/14` =
+USB, and the strapping pins `GPIO7`/`GPIO28`.
 
 ### Enabling it
 
@@ -225,7 +226,7 @@ GPIO/power pads to solder to.
    build_flags =
        ...
        -DVORD_HAS_CLASSIC_BT_UART=1
-       -DCLASSIC_BT_UART_RX_PIN=20
+       -DCLASSIC_BT_UART_RX_PIN=23
    ```
 
 See the `VORD_HAS_CLASSIC_BT_UART` block in [`src/config.h`](src/config.h) for the

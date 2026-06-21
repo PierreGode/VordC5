@@ -343,7 +343,7 @@ static const char* PENTOOL_NAMES_DEFAULT[] = {
 // The C5 only listens, so its TX is optional (CLASSIC_BT_UART_TX_PIN = -1).
 //
 // Disabled by default. Enable per build with, e.g.:
-//     -DVORD_HAS_CLASSIC_BT_UART=1 -DCLASSIC_BT_UART_RX_PIN=20
+//     -DVORD_HAS_CLASSIC_BT_UART=1 -DCLASSIC_BT_UART_RX_PIN=23
 // IMPORTANT: pick an RX GPIO that is actually free on YOUR board (avoid the LED,
 // battery ADC and — on the T-Dongle-C5 — the display pins).
 #ifndef VORD_HAS_CLASSIC_BT_UART
@@ -361,7 +361,9 @@ static const char* PENTOOL_NAMES_DEFAULT[] = {
 // GPIO the C5 listens on (wired to the WROOM-32 TX). No safe universal default —
 // override it for your board.
 #ifndef CLASSIC_BT_UART_RX_PIN
-#define CLASSIC_BT_UART_RX_PIN 20
+// GPIO23: free header pin on the Waveshare C5 dev board (GPIO20 is NOT broken
+// out there). Matches the -DCLASSIC_BT_UART_RX_PIN=23 in platformio.ini.
+#define CLASSIC_BT_UART_RX_PIN 23
 #endif
 // C5 TX back to the WROOM-32 is unused (-1 = don't assign a pin).
 #ifndef CLASSIC_BT_UART_TX_PIN

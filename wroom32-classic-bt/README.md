@@ -70,7 +70,7 @@ wire to a different GPIO, pick another free, non-strapping pin and override
 
 **Power options**
 - *Two USB cables* (simplest): power and flash each board from its own USB. Wire
-  only `TX → GPIO20` and `GND → GND`.
+  only `TX → GPIO23` and `GND → GND`.
 - *One USB supply*: power the C5 over USB, then feed the WROOM-32 from the C5's
   `5V` pin (`5V → 5V/VIN`) plus the shared `GND`.
 
