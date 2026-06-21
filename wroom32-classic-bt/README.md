@@ -47,18 +47,18 @@ Each row is one net — the listed pins all tie together:
                   DIN      VCC      GND
                    │        │        │
         ┌──────────┴────────┴────────┴────────┐
-        │  D0       3V3            GND         │  ← USB-C: power + charge + flash
+        │  D0       3V3            GND        │  ← USB-C: power + charge + flash
         │               XIAO ESP32-C5         │
-        │  D2              GND          3V3    │  ← LiPo on BAT+ / BAT- pads
+        │  D2              GND          3V3   │  ← LiPo on BAT+ / BAT- pads
         └────┬──────────────┬───────────┬─────┘
-             │ UART data    │ GND        │ 3V3  (live on USB *or* battery)
-             │              │            │
-             │              │            ├──┤├──► GND   ≥470 µF bulk cap
-             │              │            │
-        ┌────┴──────────────┴────────────┴─────┐
-        │ TX2 (GPIO17)    GND          3V3      │
-        │             ESP32-WROOM-32            │
-        └─────────────────────────────────────────┘
+             │ UART data    │ GND       │ 3V3  (live on USB *or* battery)
+             │              │           │
+             │              │           ├──┤├──► GND   ≥470 µF bulk cap
+             │              │           │
+        ┌────┴──────────────┴───────────┴─────┐
+        │ TX2 (GPIO17)    GND          3V3    │
+        │             ESP32-WROOM-32          │
+        └─────────────────────────────────────┘
 ```
 
 Power path: the XIAO runs from **USB-C or the LiPo** and switches automatically
