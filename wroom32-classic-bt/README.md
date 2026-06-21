@@ -127,10 +127,21 @@ pins (GPIO6/26). Build and flash with `bash scripts/build-xiao.sh`. To use a
 different pad: `XIAO_CLASSIC_BT_RX_GPIO=<gpio> bash scripts/build-xiao.sh` (or
 `=off` to compile the receiver out).
 
-> ⚠️ **Power:** don't run a WROOM-32 doing continuous classic-BT inquiry off the
-> XIAO's small 3V3 LDO — the BT TX current peaks can brown out the XIAO and drop
-> its AP. Give the WROOM its own supply (its own USB, or a separate 3V3/5V source)
-> and share **only GND** with the XIAO.
+> ⚠️ **Power — design for the peaks, not the average.** A WROOM-32 is a *second
+> radio*: ~80–160 mA average but **250–500 mA TX bursts** during inquiry, landing
+> on top of the XIAO's own WiFi/BLE peaks. Low, steady loads (a GPS, an OLED) run
+> straight off the XIAO's `3V3` fine — the WROOM just needs headroom for its
+> spikes. Three ways that work, best first:
+>
+> 1. **XIAO `5V` → WROOM *dev board* VIN/5V** — its onboard regulator absorbs the
+>    bursts; the XIAO LDO never sees them.
+> 2. **XIAO `5V` → a small 3.3 V regulator → WROOM** — the clean version for a bare
+>    module (see [Building on a custom PCB](#building-on-a-custom-pcb-bare-module)).
+> 3. **XIAO `3V3` → WROOM + a ≥470 µF (ideally 1000 µF) bulk cap** at the WROOM's
+>    `3V3` pin — cheapest; the cap supplies the bursts, the LDO the average. Fine
+>    for many builds, but it leans on the XIAO LDO's headroom.
+>
+> Always share **GND** with the XIAO.
 
 > **Both options:** `CLASSIC_BT_UART_BAUD` defaults to **115200** and must match
 > `UART_BAUD` in the sketch. Leaving the receiver on with nothing wired is harmless
@@ -148,9 +159,11 @@ module has **no USB, no voltage regulator and no boot circuit**, so the carrier
 has to provide them.
 
 **Power.** The module runs on **3.3 V only** and pulls ~250 mA with ~500 mA TX
-peaks. Give it a dedicated regulator — do **not** feed 5 V to its `3V3` pin, and
-do **not** run it off the C5/XIAO's small LDO (the peaks brown out the C5 and drop
-its AP). Recommended single-connector topology for a XIAO build:
+peaks. A dedicated regulator is the robust choice, and never feed 5 V to its `3V3`
+pin. (You *can* share the XIAO's 3V3 LDO if you add a **≥470 µF bulk cap** at the
+WROOM's `3V3` pin to ride out the bursts — but a separate regulator keeps the
+XIAO's own WiFi rock-steady.) Recommended single-connector topology for a XIAO
+build:
 
 ```
 USB-C (XIAO) ─VBUS 5V─┬─> XIAO 5V pad ──(XIAO LDO)──> XIAO 3V3 ──> LED VCC
